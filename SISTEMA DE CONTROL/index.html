@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>ERP Flota PRO</title>
+<script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+
+<style>
+body{font-family:'Segoe UI';background:#f4f6fb;margin:0}
+header{background:#111827;color:white;padding:15px 25px;display:flex;justify-content:space-between}
+.container{padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.card{background:white;padding:20px;border-radius:15px;box-shadow:0 4px 15px rgba(0,0,0,0.08)}
+.kpi{font-size:18px;font-weight:bold}
+.green{color:#16a34a}
+.red{color:#dc2626}
+.gray{color:#6b7280}
+button{padding:6px 10px;border:none;border-radius:6px;cursor:pointer;margin:2px}
+.btn-blue{background:#2563eb;color:white}
+.btn-green{background:#16a34a;color:white}
+.btn-red{background:#dc2626;color:white}
+.btn-gray{background:#6b7280;color:white}
+input,select{width:100%;padding:6px;margin:4px 0;border-radius:6px;border:1px solid #ddd}
+.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:none;justify-content:center;align-items:center}
+.modal-box{background:white;padding:20px;border-radius:10px;width:300px}
+.hidden{display:none}
+</style>
+</head>
+
+<body>
+
+<header>
+<div>🚛 SISTEMA DE CONTROL</div>
+<div>{{user.username}} ({{user.rol}}) <a href="/logout" style="color:white">Salir</a></div>
+</header>
+
+<!-- DASHBOARD -->
+<div class="container">
+<div class="card">
+<h3>📊 Dashboard</h3>
+
+<p>👷 Conductores</p>
+<div class="kpi green">Disponibles: <span id="cd"></span></div>
+<div class="kpi red">En ruta: <span id="co"></span></div>
+
+<p>🚛 Unidades</p>
+<div class="kpi green">Disponibles: <span id="ud"></span></div>
+<div class="kpi red">Ocupadas: <span id="uo"></span></div>
+<div class="kpi gray">Inhabilitadas: <span id="ui"></span></div>
+
+<h4>📦 Asignaciones</h4>
+<ul id="asignaciones"></ul>
+</div>
+</div>
+
+<!-- LISTAS -->
+<div class="container">
+<div class="card">
+<h3>👷 Conductores</h3>
+<ul id="conductores"></ul>
+</div>
+
+<div class="card">
+<h3>🚛 Unidades</h3>
+<ul id="unidades"></ul>
+</div>
+</div>
+
+<!-- OPERACIONES -->
+<div class="container modulo-operaciones">
+
+<div class="card">
+<h3>➕ AGREGAR</h3>
+<input id="nombre" placeholder="Nombre conductor">
+<button class="btn-green" onclick="crearConductor()">Agregar Conductor</button>
+
+<input id="placa" placeholder="Placa unidad">
+<button class="btn-green" onclick="crearUnidad()">Agregar Unidad</button>
+</div>
+
+<div class="card">
+<h3>🔁 ASIGNAR</h3>
+<select id="conductorSelect"></select>
+<select id="unidadSelect"></select>
+<button class="btn-blue" onclick="asignar()">Asignar</button>
+</div>
+
+<div class="card">
+<h3>🏁 FINALIZAR (INDEPENDIENTE)</h3>
+<select id="conductorFinal"></select>
+<select id="unidadFinal"></select>
+<button class="btn-gray" onclick="finalizar()">Finalizar</button>
+</div>
+
+<div class="card">
+<h3>🚫 INHABILITAR</h3>
+<select id="unidadInh"></select>
+<input id="obsInh" placeholder="Observación">
+<button class="btn-red" onclick="inhabilitar()">Inhabilitar</button>
+
+<select id="unidadHab"></select>
+<button class="btn-green" onclick="habilitar()">Habilitar</button>
+</div>
+
+</div>
+
+<!-- HISTORIAL -->
+<div class="container modulo-historial">
+<div class="card">
+<h3>📜 Historial</h3>
+<ul id="movimientos"></ul>
+</div>
+</div>
+
+<!-- USUARIOS -->
+<div class="container modulo-usuarios">
+<div class="card">
+<button class="btn-blue" onclick="abrirModal()">Administrar Usuarios</button>
+</div>
+</div>
+
+<!-- MODAL USUARIOS -->
+<div id="modalUsuarios" class="modal">
+<div class="modal-box">
+
+<h3>Usuarios</h3>
+
+<input id="mu_user" placeholder="Usuario">
+<input id="mu_pass" placeholder="Password">
+
+<select id="mu_rol">
+<option value="admin">admin</option>
+<option value="supervisor">supervisor</option>
+<option value="user">user</option>
+</select>
+
+<button class="btn-green" onclick="crearUsuario()">Crear</button>
+
+<ul id="listaUsuarios"></ul>
+
+<button class="btn-gray" onclick="cerrarModal()">Cerrar</button>
+
+</div>
+</div>
+
+<script>
+const socket = io();
+const ROL = "{{user.rol}}";
+
+const modal = document.getElementById("modalUsuarios");
+
+const cd=document.getElementById("cd");
+const co=document.getElementById("co");
+const ud=document.getElementById("ud");
+const uo=document.getElementById("uo");
+const ui=document.getElementById("ui");
+
+const asignaciones=document.getElementById("asignaciones");
+const conductores=document.getElementById("conductores");
+const unidades=document.getElementById("unidades");
+const movimientos=document.getElementById("movimientos");
+
+const conductorSelect=document.getElementById("conductorSelect");
+const unidadSelect=document.getElementById("unidadSelect");
+const conductorFinal=document.getElementById("conductorFinal");
+const unidadFinal=document.getElementById("unidadFinal");
+const unidadInh=document.getElementById("unidadInh");
+const unidadHab=document.getElementById("unidadHab");
+
+const nombre=document.getElementById("nombre");
+const placa=document.getElementById("placa");
+
+const mu_user=document.getElementById("mu_user");
+const mu_pass=document.getElementById("mu_pass");
+const mu_rol=document.getElementById("mu_rol");
+
+// ROLES
+function aplicarRoles(){
+if(ROL==="user"){
+document.querySelector(".modulo-operaciones").classList.add("hidden");
+document.querySelector(".modulo-usuarios").classList.add("hidden");
+document.querySelector(".modulo-historial").classList.add("hidden");
+}
+if(ROL==="supervisor"){
+document.querySelector(".modulo-usuarios").classList.add("hidden");
+}
+}
+
+// CARGAR DATOS
+function cargar(){
+fetch("/datos").then(r=>r.json()).then(d=>{
+
+cd.innerText=d.stats.conductores_disponibles;
+co.innerText=d.stats.conductores_ocupados;
+ud.innerText=d.stats.unidades_disponibles;
+uo.innerText=d.stats.unidades_ocupadas;
+ui.innerText=d.stats.unidades_inhabilitadas;
+
+asignaciones.innerHTML=d.asignaciones.map(a=>`<li>${a.conductor} → ${a.unidad}</li>`).join("");
+conductores.innerHTML=d.conductores.map(c=>`<li>${c.nombre} - ${c.estado}</li>`).join("");
+unidades.innerHTML=d.unidades.map(u=>`<li>${u.placa} - ${u.estado}</li>`).join("");
+
+let empty = `<option value="">-- Sin selección --</option>`;
+
+conductorSelect.innerHTML = empty + d.conductores.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join("");
+unidadSelect.innerHTML = empty + d.unidades.map(u=>`<option value="${u.id}">${u.placa}</option>`).join("");
+
+conductorFinal.innerHTML = conductorSelect.innerHTML;
+unidadFinal.innerHTML = unidadSelect.innerHTML;
+
+unidadInh.innerHTML = empty + d.unidades.map(u=>`<option value="${u.id}">${u.placa}</option>`).join("");
+
+unidadHab.innerHTML = empty + d.unidades.filter(u=>u.estado==="inhabilitado")
+.map(u=>`<option value="${u.id}">${u.placa}</option>`).join("");
+
+});
+}
+
+// ================= USUARIOS =================
+
+function abrirModal(){
+modal.style.display="flex";
+cargarUsuarios();
+}
+
+function cerrarModal(){
+modal.style.display="none";
+}
+
+function cargarUsuarios(){
+fetch("/usuarios")
+.then(r=>r.json())
+.then(data=>{
+document.getElementById("listaUsuarios").innerHTML =
+data.map(u=>`
+<li>
+${u.username} (${u.rol})
+<button onclick="eliminarUsuario(${u.id})">❌</button>
+</li>
+`).join("");
+});
+}
+
+function crearUsuario(){
+fetch("/crear_usuario",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+username: mu_user.value,
+password: mu_pass.value,
+rol: mu_rol.value
+})
+}).then(()=>{
+mu_user.value="";
+mu_pass.value="";
+cargarUsuarios();
+});
+}
+
+function eliminarUsuario(id){
+fetch("/eliminar_usuario",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({id})
+}).then(()=>cargarUsuarios());
+}
+
+// OPERACIONES
+function asignar(){
+if(!conductorSelect.value || !unidadSelect.value) return;
+
+fetch("/asignar",{method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+conductor_id:conductorSelect.value,
+unidad_id:unidadSelect.value
+})
+}).then(()=>cargar());
+}
+
+function finalizar(){
+if(!conductorFinal.value && !unidadFinal.value) return;
+
+fetch("/finalizar",{method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+conductor_id:conductorFinal.value || null,
+unidad_id:unidadFinal.value || null
+})
+}).then(()=>cargar());
+}
+
+function inhabilitar(){
+if(!unidadInh.value) return;
+
+fetch("/inhabilitar",{method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+unidad_id:unidadInh.value,
+observacion:document.getElementById("obsInh").value
+})
+}).then(()=>cargar());
+}
+
+function habilitar(){
+if(!unidadHab.value) return;
+
+fetch("/habilitar",{method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({unidad_id:unidadHab.value})
+}).then(()=>cargar());
+}
+
+// CRUD
+function crearConductor(){
+fetch("/crear_conductor",{method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({nombre:nombre.value})
+}).then(()=>cargar());
+}
+
+function crearUnidad(){
+fetch("/crear_unidad",{method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({placa:placa.value})
+}).then(()=>cargar());
+}
+
+// INIT
+aplicarRoles();
+cargar();
+</script>
+
+</body>
+</html>

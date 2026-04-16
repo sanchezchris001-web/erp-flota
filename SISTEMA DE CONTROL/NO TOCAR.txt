@@ -1,0 +1,4 @@
+pip install -r requirements.txt
+
+
+pip install flask flask-sqlalchemy flask-socketio werkzeug
