@@ -19,8 +19,10 @@ button{padding:6px 10px;border:none;border-radius:6px;cursor:pointer;margin:2px}
 .btn-red{background:#dc2626;color:white}
 .btn-gray{background:#6b7280;color:white}
 input,select{width:100%;padding:6px;margin:4px 0;border-radius:6px;border:1px solid #ddd}
+
 .modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:none;justify-content:center;align-items:center}
-.modal-box{background:white;padding:20px;border-radius:10px;width:300px}
+.modal-box{background:white;padding:20px;border-radius:10px;width:320px}
+
 .hidden{display:none}
 </style>
 </head>
@@ -28,7 +30,7 @@ input,select{width:100%;padding:6px;margin:4px 0;border-radius:6px;border:1px so
 <body>
 
 <header>
-<div>🚛 SISTEMA DE CONTROL</div>
+<div>🚛 ERP Flota</div>
 <div>{{user.username}} ({{user.rol}}) <a href="/logout" style="color:white">Salir</a></div>
 </header>
 
@@ -147,6 +149,7 @@ const ROL = "{{user.rol}}";
 
 const modal = document.getElementById("modalUsuarios");
 
+// ELEMENTOS
 const cd=document.getElementById("cd");
 const co=document.getElementById("co");
 const ud=document.getElementById("ud");
@@ -168,23 +171,7 @@ const unidadHab=document.getElementById("unidadHab");
 const nombre=document.getElementById("nombre");
 const placa=document.getElementById("placa");
 
-const mu_user=document.getElementById("mu_user");
-const mu_pass=document.getElementById("mu_pass");
-const mu_rol=document.getElementById("mu_rol");
-
-// ROLES
-function aplicarRoles(){
-if(ROL==="user"){
-document.querySelector(".modulo-operaciones").classList.add("hidden");
-document.querySelector(".modulo-usuarios").classList.add("hidden");
-document.querySelector(".modulo-historial").classList.add("hidden");
-}
-if(ROL==="supervisor"){
-document.querySelector(".modulo-usuarios").classList.add("hidden");
-}
-}
-
-// CARGAR DATOS
+// ================= CARGAR =================
 function cargar(){
 fetch("/datos").then(r=>r.json()).then(d=>{
 
@@ -195,8 +182,24 @@ uo.innerText=d.stats.unidades_ocupadas;
 ui.innerText=d.stats.unidades_inhabilitadas;
 
 asignaciones.innerHTML=d.asignaciones.map(a=>`<li>${a.conductor} → ${a.unidad}</li>`).join("");
-conductores.innerHTML=d.conductores.map(c=>`<li>${c.nombre} - ${c.estado}</li>`).join("");
-unidades.innerHTML=d.unidades.map(u=>`<li>${u.placa} - ${u.estado}</li>`).join("");
+
+// CONDUCTORES (EDIT/DELETE)
+conductores.innerHTML=d.conductores.map(c=>`
+<li>
+<input value="${c.nombre}" id="c_${c.id}">
+<button onclick="editarConductor(${c.id})">✏️</button>
+<button onclick="eliminarConductor(${c.id})">❌</button>
+</li>
+`).join("");
+
+// UNIDADES (EDIT/DELETE)
+unidades.innerHTML=d.unidades.map(u=>`
+<li>
+<input value="${u.placa}" id="u_${u.id}">
+<button onclick="editarUnidad(${u.id})">✏️</button>
+<button onclick="eliminarUnidad(${u.id})">❌</button>
+</li>
+`).join("");
 
 let empty = `<option value="">-- Sin selección --</option>`;
 
@@ -215,7 +218,6 @@ unidadHab.innerHTML = empty + d.unidades.filter(u=>u.estado==="inhabilitado")
 }
 
 // ================= USUARIOS =================
-
 function abrirModal(){
 modal.style.display="flex";
 cargarUsuarios();
@@ -232,7 +234,14 @@ fetch("/usuarios")
 document.getElementById("listaUsuarios").innerHTML =
 data.map(u=>`
 <li>
-${u.username} (${u.rol})
+<input value="${u.username}" id="uuser_${u.id}">
+<select id="urol_${u.id}">
+<option value="admin" ${u.rol=="admin"?"selected":""}>admin</option>
+<option value="supervisor" ${u.rol=="supervisor"?"selected":""}>supervisor</option>
+<option value="user" ${u.rol=="user"?"selected":""}>user</option>
+</select>
+
+<button onclick="editarUsuario(${u.id})">✏️</button>
 <button onclick="eliminarUsuario(${u.id})">❌</button>
 </li>
 `).join("");
@@ -244,26 +253,72 @@ fetch("/crear_usuario",{
 method:"POST",
 headers:{"Content-Type":"application/json"},
 body:JSON.stringify({
-username: mu_user.value,
-password: mu_pass.value,
-rol: mu_rol.value
+username:mu_user.value,
+password:mu_pass.value,
+rol:mu_rol.value
 })
-}).then(()=>{
-mu_user.value="";
-mu_pass.value="";
-cargarUsuarios();
-});
+}).then(()=>cargarUsuarios());
+}
+
+function editarUsuario(id){
+fetch("/editar_usuario",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+id,
+username:document.getElementById("uuser_"+id).value,
+rol:document.getElementById("urol_"+id).value,
+password:"1234"
+})
+}).then(()=>cargarUsuarios());
 }
 
 function eliminarUsuario(id){
-fetch("/eliminar_usuario",{
-method:"POST",
+fetch("/eliminar_usuario",{method:"POST",
 headers:{"Content-Type":"application/json"},
 body:JSON.stringify({id})
 }).then(()=>cargarUsuarios());
 }
 
-// OPERACIONES
+// ================= CONDUCTORES =================
+function editarConductor(id){
+fetch("/editar_conductor",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+id,
+nombre:document.getElementById("c_"+id).value
+})
+}).then(()=>cargar());
+}
+
+function eliminarConductor(id){
+fetch("/eliminar_conductor",{method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({id})
+}).then(()=>cargar());
+}
+
+// ================= UNIDADES =================
+function editarUnidad(id){
+fetch("/editar_unidad",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+id,
+placa:document.getElementById("u_"+id).value
+})
+}).then(()=>cargar());
+}
+
+function eliminarUnidad(id){
+fetch("/eliminar_unidad",{method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({id})
+}).then(()=>cargar());
+}
+
+// ================= OPERACIONES =================
 function asignar(){
 if(!conductorSelect.value || !unidadSelect.value) return;
 
@@ -277,8 +332,6 @@ unidad_id:unidadSelect.value
 }
 
 function finalizar(){
-if(!conductorFinal.value && !unidadFinal.value) return;
-
 fetch("/finalizar",{method:"POST",
 headers:{"Content-Type":"application/json"},
 body:JSON.stringify({
@@ -289,27 +342,23 @@ unidad_id:unidadFinal.value || null
 }
 
 function inhabilitar(){
-if(!unidadInh.value) return;
-
 fetch("/inhabilitar",{method:"POST",
 headers:{"Content-Type":"application/json"},
 body:JSON.stringify({
 unidad_id:unidadInh.value,
-observacion:document.getElementById("obsInh").value
+observacion:obsInh.value
 })
 }).then(()=>cargar());
 }
 
 function habilitar(){
-if(!unidadHab.value) return;
-
 fetch("/habilitar",{method:"POST",
 headers:{"Content-Type":"application/json"},
 body:JSON.stringify({unidad_id:unidadHab.value})
 }).then(()=>cargar());
 }
 
-// CRUD
+// ================= CRUD =================
 function crearConductor(){
 fetch("/crear_conductor",{method:"POST",
 headers:{"Content-Type":"application/json"},
@@ -324,8 +373,6 @@ body:JSON.stringify({placa:placa.value})
 }).then(()=>cargar());
 }
 
-// INIT
-aplicarRoles();
 cargar();
 </script>
 
