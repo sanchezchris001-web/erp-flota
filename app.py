@@ -3,8 +3,8 @@ from flask import Flask, render_template, request, jsonify, session, redirect
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO
 from datetime import datetime
-
 import eventlet
+
 eventlet.monkey_patch()
 
 app = Flask(__name__)
@@ -14,11 +14,7 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
 
-socketio = SocketIO(
-    app,
-    async_mode="eventlet",
-    cors_allowed_origins="*"
-)
+socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")
 
 # ================= MODELOS =================
 
@@ -43,7 +39,7 @@ class Unidad(db.Model):
 
 class Movimiento(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    tipo = db.Column(db.String(100))
+    tipo = db.Column(db.String(150))
     observacion = db.Column(db.String(200))
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -102,16 +98,11 @@ def datos():
     conductores = Conductor.query.all()
     unidades = Unidad.query.all()
 
-    asignaciones = []
-    for c in conductores:
-        if c.estado == "en_ruta":
-            unidad = next((u for u in unidades if u.estado == "ocupada"), None)
-            if unidad:
-                asignaciones.append({
-                    "conductor": c.nombre,
-                    "unidad": unidad.placa,
-                    "estado": "En ruta"
-                })
+    asignaciones = [
+        {"conductor": c.nombre, "unidad": u.placa, "estado": "En ruta"}
+        for c in conductores if c.estado == "en_ruta"
+        for u in unidades if u.estado == "ocupada"
+    ]
 
     return jsonify({
         "conductores":[{"id":c.id,"nombre":c.nombre,"estado":c.estado} for c in conductores],
@@ -125,6 +116,22 @@ def datos():
             "unidades_inhabilitadas": len([u for u in unidades if u.estado=="inhabilitado"])
         }
     })
+
+# ================= MOVIMIENTOS (HISTORIAL ARREGLADO) =================
+
+@app.route("/movimientos")
+def movimientos():
+    if not require_login():
+        return "", 403
+
+    return jsonify([
+        {
+            "tipo": m.tipo,
+            "obs": m.observacion or "",
+            "fecha": m.fecha.strftime("%Y-%m-%d %H:%M")
+        }
+        for m in Movimiento.query.order_by(Movimiento.fecha.desc()).all()
+    ])
 
 # ================= USUARIOS =================
 
@@ -140,12 +147,23 @@ def crear_usuario():
     if not is_admin():
         return "", 403
 
-    data = request.json
-    db.session.add(Usuario(
-        username=data["username"],
-        password=data["password"],
-        rol=data["rol"]
-    ))
+    d = request.json
+    db.session.add(Usuario(username=d["username"], password=d["password"], rol=d["rol"]))
+    db.session.commit()
+    return "", 200
+
+
+@app.route("/editar_usuario", methods=["POST"])
+def editar_usuario():
+    if not is_admin():
+        return "", 403
+
+    d = request.json
+    u = Usuario.query.get(d["id"])
+    u.username = d["username"]
+    u.rol = d["rol"]
+    if d.get("password"):
+        u.password = d["password"]
     db.session.commit()
     return "", 200
 
@@ -155,11 +173,9 @@ def eliminar_usuario():
     if not is_admin():
         return "", 403
 
-    data = request.json
-    u = Usuario.query.get(data["id"])
-    if u:
-        db.session.delete(u)
-        db.session.commit()
+    u = Usuario.query.get(request.json["id"])
+    db.session.delete(u)
+    db.session.commit()
     return "", 200
 
 # ================= CONDUCTORES =================
@@ -174,6 +190,28 @@ def crear_conductor():
     socketio.emit("actualizar")
     return "", 200
 
+
+@app.route("/editar_conductor", methods=["POST"])
+def editar_conductor():
+    if not is_supervisor():
+        return "", 403
+
+    c = Conductor.query.get(request.json["id"])
+    c.nombre = request.json["nombre"]
+    db.session.commit()
+    return "", 200
+
+
+@app.route("/eliminar_conductor", methods=["POST"])
+def eliminar_conductor():
+    if not is_supervisor():
+        return "", 403
+
+    c = Conductor.query.get(request.json["id"])
+    db.session.delete(c)
+    db.session.commit()
+    return "", 200
+
 # ================= UNIDADES =================
 
 @app.route("/crear_unidad", methods=["POST"])
@@ -183,60 +221,69 @@ def crear_unidad():
 
     db.session.add(Unidad(placa=request.json["placa"]))
     db.session.commit()
-    socketio.emit("actualizar")
     return "", 200
 
-# ================= ASIGNAR =================
+
+@app.route("/editar_unidad", methods=["POST"])
+def editar_unidad():
+    if not is_supervisor():
+        return "", 403
+
+    u = Unidad.query.get(request.json["id"])
+    u.placa = request.json["placa"]
+    db.session.commit()
+    return "", 200
+
+
+@app.route("/eliminar_unidad", methods=["POST"])
+def eliminar_unidad():
+    if not is_supervisor():
+        return "", 403
+
+    u = Unidad.query.get(request.json["id"])
+    db.session.delete(u)
+    db.session.commit()
+    return "", 200
+
+# ================= OPERACIONES =================
 
 @app.route("/asignar", methods=["POST"])
 def asignar():
     if not is_supervisor():
         return "", 403
 
-    data = request.json
+    d = request.json
 
-    c = Conductor.query.get(data["conductor_id"])
-    u = Unidad.query.get(data["unidad_id"])
+    c = Conductor.query.get(d["conductor_id"])
+    u = Unidad.query.get(d["unidad_id"])
 
-    if not c or not u:
-        return "", 404
-
-    c.estado = "en_ruta"
-    u.estado = "ocupada"
+    if c: c.estado = "en_ruta"
+    if u: u.estado = "ocupada"
 
     db.session.add(Movimiento(tipo=f"Asignación {c.nombre} → {u.placa}"))
     db.session.commit()
-    socketio.emit("actualizar")
     return "", 200
 
-# ================= FINALIZAR =================
 
 @app.route("/finalizar", methods=["POST"])
 def finalizar():
     if not is_supervisor():
         return "", 403
 
-    data = request.json
+    d = request.json
 
-    conductor_id = data.get("conductor_id")
-    unidad_id = data.get("unidad_id")
+    if d.get("conductor_id"):
+        c = Conductor.query.get(d["conductor_id"])
+        if c: c.estado = "disponible"
 
-    if conductor_id:
-        c = Conductor.query.get(conductor_id)
-        if c:
-            c.estado = "disponible"
-
-    if unidad_id:
-        u = Unidad.query.get(unidad_id)
-        if u:
-            u.estado = "disponible"
+    if d.get("unidad_id"):
+        u = Unidad.query.get(d["unidad_id"])
+        if u: u.estado = "disponible"
 
     db.session.add(Movimiento(tipo="Finalización de operación"))
     db.session.commit()
-    socketio.emit("actualizar")
     return "", 200
 
-# ================= INHABILITAR =================
 
 @app.route("/inhabilitar", methods=["POST"])
 def inhabilitar():
@@ -244,14 +291,11 @@ def inhabilitar():
         return "", 403
 
     u = Unidad.query.get(request.json["unidad_id"])
-    if u:
-        u.estado = "inhabilitado"
+    if u: u.estado = "inhabilitado"
 
     db.session.commit()
-    socketio.emit("actualizar")
     return "", 200
 
-# ================= HABILITAR =================
 
 @app.route("/habilitar", methods=["POST"])
 def habilitar():
@@ -259,11 +303,9 @@ def habilitar():
         return "", 403
 
     u = Unidad.query.get(request.json["unidad_id"])
-    if u:
-        u.estado = "disponible"
+    if u: u.estado = "disponible"
 
     db.session.commit()
-    socketio.emit("actualizar")
     return "", 200
 
 # ================= INIT =================
@@ -277,10 +319,4 @@ if __name__ == "__main__":
             db.session.commit()
 
     port = int(os.environ.get("PORT", 5000))
-
-    socketio.run(
-        app,
-        host="0.0.0.0",
-        port=port,
-        debug=False
-    )
+    socketio.run(app, host="0.0.0.0", port=port, debug=False)
