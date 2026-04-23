@@ -124,7 +124,7 @@ def movimientos():
         {
             "usuario": m.usuario,
             "accion": m.accion,
-            "obs": m.observacion,
+            "obs": m.observacion or "",
             "fecha": m.fecha.strftime("%Y-%m-%d %H:%M")
         }
         for m in data
@@ -158,6 +158,9 @@ def crear_unidad():
 
 @app.route("/editar_conductor", methods=["POST"])
 def editar_conductor():
+    if not is_supervisor():
+        return "", 403
+
     c = Conductor.query.get(request.json["id"])
     c.nombre = request.json["nombre"]
     registrar_movimiento("Editar conductor", c.nombre)
@@ -166,6 +169,9 @@ def editar_conductor():
 
 @app.route("/editar_unidad", methods=["POST"])
 def editar_unidad():
+    if not is_supervisor():
+        return "", 403
+
     u = Unidad.query.get(request.json["id"])
     u.placa = request.json["placa"]
     registrar_movimiento("Editar unidad", u.placa)
@@ -174,6 +180,9 @@ def editar_unidad():
 
 @app.route("/eliminar_conductor", methods=["POST"])
 def eliminar_conductor():
+    if not is_supervisor():
+        return "", 403
+
     c = Conductor.query.get(request.json["id"])
     registrar_movimiento("Eliminar conductor", c.nombre)
     db.session.delete(c)
@@ -182,6 +191,9 @@ def eliminar_conductor():
 
 @app.route("/eliminar_unidad", methods=["POST"])
 def eliminar_unidad():
+    if not is_supervisor():
+        return "", 403
+
     u = Unidad.query.get(request.json["id"])
     registrar_movimiento("Eliminar unidad", u.placa)
     db.session.delete(u)
@@ -190,6 +202,9 @@ def eliminar_unidad():
 
 @app.route("/asignar", methods=["POST"])
 def asignar():
+    if not is_supervisor():
+        return "", 403
+
     c = Conductor.query.get(request.json["conductor_id"])
     u = Unidad.query.get(request.json["unidad_id"])
 
@@ -202,13 +217,18 @@ def asignar():
 
 @app.route("/finalizar", methods=["POST"])
 def finalizar():
+    if not is_supervisor():
+        return "", 403
+
     if request.json.get("conductor_id"):
         c = Conductor.query.get(request.json["conductor_id"])
-        c.estado = "disponible"
+        if c:
+            c.estado = "disponible"
 
     if request.json.get("unidad_id"):
         u = Unidad.query.get(request.json["unidad_id"])
-        u.estado = "disponible"
+        if u:
+            u.estado = "disponible"
 
     registrar_movimiento("Finalizar operación")
     db.session.commit()
@@ -224,4 +244,5 @@ if __name__ == "__main__":
             db.session.add(Usuario(username="admin", password="admin", rol="admin"))
             db.session.commit()
 
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
