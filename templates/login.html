@@ -31,6 +31,10 @@ background:#2563eb;
 color:white;
 border:none;
 }
+.error{
+color:red;
+font-size:14px;
+}
 </style>
 </head>
 
@@ -38,6 +42,10 @@ border:none;
 
 <form method="POST" class="box">
 <h2>Login</h2>
+
+{% if error %}
+<p class="error">{{error}}</p>
+{% endif %}
 
 <input name="username" placeholder="Usuario" required>
 <input name="password" type="password" placeholder="Contraseña" required>

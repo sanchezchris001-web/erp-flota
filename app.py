@@ -1,11 +1,7 @@
 import os
 from flask import Flask, render_template, request, jsonify, session, redirect
 from flask_sqlalchemy import SQLAlchemy
-from flask_socketio import SocketIO
 from datetime import datetime
-import eventlet
-
-eventlet.monkey_patch()
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "secret123"
@@ -13,8 +9,6 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///db.sqlite3"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
-
-socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")
 
 # ================= MODELOS =================
 
@@ -72,6 +66,8 @@ def login():
         if u:
             session["user_id"] = u.id
             return redirect("/home")
+        else:
+            return render_template("login.html", error="Credenciales incorrectas")
 
     return render_template("login.html")
 
@@ -99,7 +95,7 @@ def datos():
     unidades = Unidad.query.all()
 
     asignaciones = [
-        {"conductor": c.nombre, "unidad": u.placa, "estado": "En ruta"}
+        {"conductor": c.nombre, "unidad": u.placa}
         for c in conductores if c.estado == "en_ruta"
         for u in unidades if u.estado == "ocupada"
     ]
@@ -117,7 +113,7 @@ def datos():
         }
     })
 
-# ================= MOVIMIENTOS (HISTORIAL ARREGLADO) =================
+# ================= HISTORIAL =================
 
 @app.route("/movimientos")
 def movimientos():
@@ -185,9 +181,10 @@ def crear_conductor():
     if not is_supervisor():
         return "", 403
 
-    db.session.add(Conductor(nombre=request.json["nombre"]))
+    c = Conductor(nombre=request.json["nombre"])
+    db.session.add(c)
+    db.session.add(Movimiento(tipo=f"Nuevo conductor: {c.nombre}"))
     db.session.commit()
-    socketio.emit("actualizar")
     return "", 200
 
 
@@ -198,6 +195,7 @@ def editar_conductor():
 
     c = Conductor.query.get(request.json["id"])
     c.nombre = request.json["nombre"]
+    db.session.add(Movimiento(tipo=f"Editar conductor: {c.nombre}"))
     db.session.commit()
     return "", 200
 
@@ -209,6 +207,7 @@ def eliminar_conductor():
 
     c = Conductor.query.get(request.json["id"])
     db.session.delete(c)
+    db.session.add(Movimiento(tipo="Eliminar conductor"))
     db.session.commit()
     return "", 200
 
@@ -219,7 +218,9 @@ def crear_unidad():
     if not is_supervisor():
         return "", 403
 
-    db.session.add(Unidad(placa=request.json["placa"]))
+    u = Unidad(placa=request.json["placa"])
+    db.session.add(u)
+    db.session.add(Movimiento(tipo=f"Nueva unidad: {u.placa}"))
     db.session.commit()
     return "", 200
 
@@ -231,6 +232,7 @@ def editar_unidad():
 
     u = Unidad.query.get(request.json["id"])
     u.placa = request.json["placa"]
+    db.session.add(Movimiento(tipo=f"Editar unidad: {u.placa}"))
     db.session.commit()
     return "", 200
 
@@ -242,6 +244,7 @@ def eliminar_unidad():
 
     u = Unidad.query.get(request.json["id"])
     db.session.delete(u)
+    db.session.add(Movimiento(tipo="Eliminar unidad"))
     db.session.commit()
     return "", 200
 
@@ -253,7 +256,6 @@ def asignar():
         return "", 403
 
     d = request.json
-
     c = Conductor.query.get(d["conductor_id"])
     u = Unidad.query.get(d["unidad_id"])
 
@@ -284,30 +286,6 @@ def finalizar():
     db.session.commit()
     return "", 200
 
-
-@app.route("/inhabilitar", methods=["POST"])
-def inhabilitar():
-    if not is_supervisor():
-        return "", 403
-
-    u = Unidad.query.get(request.json["unidad_id"])
-    if u: u.estado = "inhabilitado"
-
-    db.session.commit()
-    return "", 200
-
-
-@app.route("/habilitar", methods=["POST"])
-def habilitar():
-    if not is_supervisor():
-        return "", 403
-
-    u = Unidad.query.get(request.json["unidad_id"])
-    if u: u.estado = "disponible"
-
-    db.session.commit()
-    return "", 200
-
 # ================= INIT =================
 
 if __name__ == "__main__":
@@ -319,4 +297,4 @@ if __name__ == "__main__":
             db.session.commit()
 
     port = int(os.environ.get("PORT", 5000))
-    socketio.run(app, host="0.0.0.0", port=port, debug=False)
+    app.run(host="0.0.0.0", port=port)
