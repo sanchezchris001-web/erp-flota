@@ -27,7 +27,7 @@ input,select{width:100%;padding:6px;margin:4px 0;border-radius:6px;border:1px so
 <header>
 <div>🚛 ERP Flota PRO</div>
 
-<div style="display:flex;align-items:center;gap:10px;">
+<div style="display:flex;gap:10px;align-items:center;">
 <span>{{user.username}} ({{user.rol}})</span>
 <button onclick="logout()" class="btn-red">Cerrar sesión</button>
 </div>
@@ -37,7 +37,6 @@ input,select{width:100%;padding:6px;margin:4px 0;border-radius:6px;border:1px so
 const userRol = "{{user.rol}}";
 </script>
 
-<!-- DASHBOARD -->
 <div class="container">
 <div class="card">
 <h3>📊 Dashboard</h3>
@@ -45,105 +44,99 @@ const userRol = "{{user.rol}}";
 <p>👷 Conductores: <span id="cd"></span> / <span id="co"></span></p>
 <p>🚛 Unidades: <span id="ud"></span> / <span id="uo"></span> / Inh: <span id="ui"></span></p>
 
-<h4>Asignaciones</h4>
 <ul id="asignaciones"></ul>
 </div>
 </div>
 
-<!-- LISTAS -->
 <div class="container">
 <div class="card">
-<h3>👷 Conductores</h3>
+<h3>Conductores</h3>
 <ul id="conductores"></ul>
 </div>
 
 <div class="card">
-<h3>🚛 Unidades</h3>
+<h3>Unidades</h3>
 <ul id="unidades"></ul>
 </div>
 </div>
 
-<!-- CREAR -->
 <div class="container" id="seccion-crear">
 <div class="card">
-<h3>➕ Crear</h3>
+<h3>Crear</h3>
 
 <input id="nombre" placeholder="Conductor">
-<button class="btn-green" onclick="crearConductor()">Agregar</button>
+<button onclick="crearConductor()" class="btn-green">Agregar</button>
 
 <input id="placa" placeholder="Unidad">
-<button class="btn-green" onclick="crearUnidad()">Agregar</button>
+<button onclick="crearUnidad()" class="btn-green">Agregar</button>
 
 </div>
 </div>
 
-<!-- EDICIÓN -->
 <div class="container" id="seccion-editar">
 <div class="card">
-<h3>✏️ Gestión de Conductores</h3>
+<h3>Editar Conductores</h3>
 
 <select id="editConductorSelect"></select>
-<input id="editConductorNombre" placeholder="Nuevo nombre">
+<input id="editConductorNombre">
 
-<button class="btn-blue" onclick="editarConductor()">Guardar</button>
-<button class="btn-red" onclick="eliminarConductor()">Eliminar</button>
+<button onclick="editarConductor()" class="btn-blue">Guardar</button>
+<button onclick="eliminarConductor()" class="btn-red">Eliminar</button>
 </div>
 
 <div class="card">
-<h3>✏️ Gestión de Unidades</h3>
+<h3>Editar Unidades</h3>
 
 <select id="editUnidadSelect"></select>
-<input id="editUnidadPlaca" placeholder="Nueva placa">
+<input id="editUnidadPlaca">
 
-<button class="btn-blue" onclick="editarUnidad()">Guardar</button>
-<button class="btn-red" onclick="eliminarUnidad()">Eliminar</button>
+<button onclick="editarUnidad()" class="btn-blue">Guardar</button>
+<button onclick="eliminarUnidad()" class="btn-red">Eliminar</button>
 </div>
 </div>
 
-<!-- OPERACIONES -->
 <div class="container" id="seccion-operaciones">
-
 <div class="card">
-<h3>🔁 Asignar</h3>
+<h3>Asignar</h3>
+
 <select id="conductorSelect"></select>
 <select id="unidadSelect"></select>
-<button class="btn-blue" onclick="asignar()">Asignar</button>
+
+<button onclick="asignar()" class="btn-blue">Asignar</button>
 </div>
 
 <div class="card">
-<h3>🏁 Finalizar</h3>
+<h3>Finalizar</h3>
+
 <select id="conductorFinal"></select>
 <select id="unidadFinal"></select>
-<button class="btn-gray" onclick="finalizar()">Finalizar</button>
+
+<button onclick="finalizar()" class="btn-gray">Finalizar</button>
+</div>
 </div>
 
-</div>
-
-<!-- HISTORIAL -->
 <div class="container" id="seccion-historial">
 <div class="card">
-<h3>📜 Historial (Admin)</h3>
+<h3>Historial</h3>
 <ul id="movimientos"></ul>
 </div>
 </div>
 
-<!-- USUARIOS -->
 <div class="container" id="seccion-usuarios">
 <div class="card">
-<h3>👤 Gestión de Usuarios</h3>
+<h3>Usuarios</h3>
 
 <input id="u_id" type="hidden">
-
 <input id="u_user" placeholder="Usuario">
-<input id="u_pass" placeholder="Password (opcional al editar)">
+<input id="u_pass" placeholder="Password">
 
 <select id="u_rol">
-<option value="admin">admin</option>
-<option value="supervisor">supervisor</option>
-<option value="user">user</option>
+<option>admin</option>
+<option>supervisor</option>
+<option>user</option>
 </select>
 
-<button class="btn-green" onclick="guardarUsuario()">Guardar</button>
+<button onclick="guardarUsuario()" class="btn-green">Guardar</button>
 
 <ul id="listaUsuarios"></ul>
 </div>
@@ -151,43 +144,43 @@ const userRol = "{{user.rol}}";
 
 <script>
 
-// ===== FUNCIONES =====
-
-function logout(){
-window.location.href = "/logout";
+// ===== API SEGURA =====
+function api(url,data={}){
+return fetch(url,{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify(data)
+})
+.then(r=>{
+if(!r.ok) throw "Error servidor";
+return r;
+})
+.catch(e=>alert(e));
 }
+
+// ===== UTIL =====
+function logout(){ location.href="/logout"; }
 
 function colorEstado(e){
 if(e==="disponible") return "green";
-if(e==="en_ruta") return "orange";
-if(e==="ocupada") return "orange";
+if(e==="en_ruta"||e==="ocupada") return "orange";
 if(e==="inhabilitado") return "red";
 return "black";
 }
 
-// 🔥 FIX BUG SELECT
 function actualizarSelect(select, lista, key, label){
-let valorActual = select.value;
-
-let opciones = `<option value="">--</option>` + 
-lista.map(item => `<option value="${item[key]}">${item[label]}</option>`).join("");
-
-select.innerHTML = opciones;
-
-if(valorActual){
-select.value = valorActual;
-}
+let v = select.value;
+select.innerHTML = `<option value="">--</option>` + lista.map(i=>`<option value="${i[key]}">${i[label]}</option>`).join("");
+if(v) select.value=v;
 }
 
 // ===== ELEMENTOS =====
-
 const cd = document.getElementById("cd");
 const co = document.getElementById("co");
 const ud = document.getElementById("ud");
 const uo = document.getElementById("uo");
 const ui = document.getElementById("ui");
 
-const asignaciones = document.getElementById("asignaciones");
 const conductores = document.getElementById("conductores");
 const unidades = document.getElementById("unidades");
 const movimientos = document.getElementById("movimientos");
@@ -214,161 +207,114 @@ const u_rol = document.getElementById("u_rol");
 const listaUsuarios = document.getElementById("listaUsuarios");
 
 // ===== CARGAR =====
-
 function cargar(){
 
 fetch("/datos").then(r=>r.json()).then(d=>{
 
-cd.innerText = d.stats.conductores_disponibles;
-co.innerText = d.stats.conductores_ocupados;
-ud.innerText = d.stats.unidades_disponibles;
-uo.innerText = d.stats.unidades_ocupadas;
-ui.innerText = d.stats.unidades_inhabilitadas;
+cd.innerText=d.stats.conductores_disponibles;
+co.innerText=d.stats.conductores_ocupados;
+ud.innerText=d.stats.unidades_disponibles;
+uo.innerText=d.stats.unidades_ocupadas;
+ui.innerText=d.stats.unidades_inhabilitadas;
 
-asignaciones.innerHTML = d.asignaciones.map(a=>`<li>${a.conductor} → ${a.unidad}</li>`).join("");
+conductores.innerHTML=d.conductores.map(c=>`
+<li>${c.nombre} - <span style="color:${colorEstado(c.estado)}">${c.estado}</span></li>`).join("");
 
-conductores.innerHTML = d.conductores.map(c=>`
-<li>${c.nombre} - <span style="color:${colorEstado(c.estado)}">${c.estado}</span></li>
-`).join("");
+unidades.innerHTML=d.unidades.map(u=>`
+<li>${u.placa} - <span style="color:${colorEstado(u.estado)}">${u.estado}</span></li>`).join("");
 
-unidades.innerHTML = d.unidades.map(u=>`
-<li>${u.placa} - <span style="color:${colorEstado(u.estado)}">${u.estado}</span></li>
-`).join("");
-
-// 🔥 selects sin bug
-actualizarSelect(conductorSelect, d.conductores, "id", "nombre");
-actualizarSelect(unidadSelect, d.unidades, "id", "placa");
-
-actualizarSelect(conductorFinal, d.conductores, "id", "nombre");
-actualizarSelect(unidadFinal, d.unidades, "id", "placa");
-
-actualizarSelect(editConductorSelect, d.conductores, "id", "nombre");
-actualizarSelect(editUnidadSelect, d.unidades, "id", "placa");
+actualizarSelect(conductorSelect,d.conductores,"id","nombre");
+actualizarSelect(unidadSelect,d.unidades,"id","placa");
+actualizarSelect(conductorFinal,d.conductores,"id","nombre");
+actualizarSelect(unidadFinal,d.unidades,"id","placa");
+actualizarSelect(editConductorSelect,d.conductores,"id","nombre");
+actualizarSelect(editUnidadSelect,d.unidades,"id","placa");
 
 });
 
-// historial
 if(userRol==="admin"){
 fetch("/movimientos").then(r=>r.json()).then(d=>{
-movimientos.innerHTML = d.map(m=>`
-<li>
-<b>${m.accion}</b><br>
-👤 ${m.usuario}<br>
-🕒 ${m.fecha}<br>
-📝 ${m.obs}
-</li>
-`).join("");
+movimientos.innerHTML=d.map(m=>`
+<li><b>${m.accion}</b> - ${m.usuario} - ${m.fecha}</li>`).join("");
 });
-}
 
-// usuarios
-if(userRol==="admin"){
 fetch("/usuarios").then(r=>r.json()).then(d=>{
-listaUsuarios.innerHTML = d.map(u=>`
-<li>
-${u.username} (${u.rol})
-<button onclick="editarUsuario(${u.id}, '${u.username}', '${u.rol}')">✏️</button>
+listaUsuarios.innerHTML=d.map(u=>`
+<li>${u.username} (${u.rol})
+<button onclick="editarUsuario(${u.id},'${u.username}','${u.rol}')">✏️</button>
 <button onclick="eliminarUsuario(${u.id})">❌</button>
-</li>
-`).join("");
+</li>`).join("");
 });
 }
 
 }
 
-// ===== CRUD =====
-
+// ===== FUNCIONES =====
 function crearConductor(){
-fetch("/crear_conductor",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({nombre:nombre.value})}).then(cargar);
+if(!nombre.value.trim()) return alert("Nombre requerido");
+api("/crear_conductor",{nombre:nombre.value}).then(cargar);
 }
 
 function crearUnidad(){
-fetch("/crear_unidad",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({placa:placa.value})}).then(cargar);
+if(!placa.value.trim()) return alert("Placa requerida");
+api("/crear_unidad",{placa:placa.value}).then(cargar);
 }
 
 function editarConductor(){
-fetch("/editar_conductor",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({id:editConductorSelect.value,nombre:editConductorNombre.value})}).then(cargar);
+if(!editConductorSelect.value) return;
+api("/editar_conductor",{id:editConductorSelect.value,nombre:editConductorNombre.value}).then(cargar);
 }
 
 function eliminarConductor(){
-fetch("/eliminar_conductor",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({id:editConductorSelect.value})}).then(cargar);
+api("/eliminar_conductor",{id:editConductorSelect.value}).then(cargar);
 }
 
 function editarUnidad(){
-fetch("/editar_unidad",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({id:editUnidadSelect.value,placa:editUnidadPlaca.value})}).then(cargar);
+if(!editUnidadSelect.value) return;
+api("/editar_unidad",{id:editUnidadSelect.value,placa:editUnidadPlaca.value}).then(cargar);
 }
 
 function eliminarUnidad(){
-fetch("/eliminar_unidad",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({id:editUnidadSelect.value})}).then(cargar);
+api("/eliminar_unidad",{id:editUnidadSelect.value}).then(cargar);
 }
 
 function asignar(){
-fetch("/asignar",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({conductor_id:conductorSelect.value,unidad_id:unidadSelect.value})}).then(cargar);
+if(!conductorSelect.value||!unidadSelect.value) return alert("Seleccione datos");
+api("/asignar",{conductor_id:conductorSelect.value,unidad_id:unidadSelect.value}).then(cargar);
 }
 
 function finalizar(){
-fetch("/finalizar",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({conductor_id:conductorFinal.value || null,unidad_id:unidadFinal.value || null})}).then(cargar);
+api("/finalizar",{conductor_id:conductorFinal.value||null,unidad_id:unidadFinal.value||null}).then(cargar);
 }
 
-// ===== USUARIOS =====
-
-function editarUsuario(id, username, rol){
-u_id.value=id;
-u_user.value=username;
-u_rol.value=rol;
-u_pass.value="";
+// usuarios
+function editarUsuario(id,u,r){
+u_id.value=id;u_user.value=u;u_rol.value=r;u_pass.value="";
 }
 
 function guardarUsuario(){
-let url = u_id.value ? "/editar_usuario" : "/crear_usuario";
-
-fetch(url,{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({
-id:u_id.value,
-username:u_user.value,
-password:u_pass.value,
-rol:u_rol.value
-})
-}).then(()=>{
-u_id.value="";
-u_user.value="";
-u_pass.value="";
-cargar();
-});
+api(u_id.value?"/editar_usuario":"/crear_usuario",{
+id:u_id.value,username:u_user.value,password:u_pass.value,rol:u_rol.value
+}).then(()=>{u_id.value="";u_user.value="";u_pass.value="";cargar();});
 }
 
 function eliminarUsuario(id){
-if(!confirm("¿Eliminar usuario?")) return;
-
-fetch("/eliminar_usuario",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({id})}).then(cargar);
+if(!confirm("Eliminar?")) return;
+api("/eliminar_usuario",{id}).then(cargar);
 }
 
 // ===== ROLES =====
-
 if(userRol==="user"){
 document.getElementById("seccion-crear").style.display="none";
 document.getElementById("seccion-editar").style.display="none";
 document.getElementById("seccion-operaciones").style.display="none";
 }
-
 if(userRol!=="admin"){
 document.getElementById("seccion-usuarios").style.display="none";
 document.getElementById("seccion-historial").style.display="none";
 }
 
-// ===== REFRESH =====
-
+// ===== INIT =====
 setInterval(cargar,3000);
 cargar();
 
