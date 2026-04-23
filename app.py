@@ -28,6 +28,12 @@ class Unidad(db.Model):
     placa = db.Column(db.String(50))
     estado = db.Column(db.String(20), default="disponible")
 
+class Asignacion(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    conductor_id = db.Column(db.Integer)
+    unidad_id = db.Column(db.Integer)
+    activa = db.Column(db.Boolean, default=True)
+
 class Movimiento(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     usuario = db.Column(db.String(50))
@@ -73,7 +79,7 @@ def login():
             session["user_id"] = u.id
             return redirect("/home")
         else:
-            return render_template("login.html", error="Credenciales incorrectas")
+            return render_template("login.html")
 
     return render_template("login.html")
 
@@ -97,10 +103,20 @@ def datos():
 
     conductores = Conductor.query.all()
     unidades = Unidad.query.all()
+    asignaciones = Asignacion.query.filter_by(activa=True).all()
 
     return jsonify({
         "conductores":[{"id":c.id,"nombre":c.nombre,"estado":c.estado} for c in conductores],
         "unidades":[{"id":u.id,"placa":u.placa,"estado":u.estado} for u in unidades],
+
+        "asignaciones":[
+            {
+                "conductor": Conductor.query.get(a.conductor_id).nombre,
+                "unidad": Unidad.query.get(a.unidad_id).placa
+            }
+            for a in asignaciones
+        ],
+
         "stats":{
             "conductores_disponibles": len([c for c in conductores if c.estado=="disponible"]),
             "conductores_ocupados": len([c for c in conductores if c.estado=="en_ruta"]),
@@ -136,11 +152,9 @@ def listar_usuarios():
     if not is_admin():
         return "", 403
 
-    usuarios = Usuario.query.all()
-
     return jsonify([
         {"id":u.id,"username":u.username,"rol":u.rol}
-        for u in usuarios
+        for u in Usuario.query.all()
     ])
 
 @app.route("/crear_usuario", methods=["POST"])
@@ -288,6 +302,8 @@ def asignar():
     c.estado = "en_ruta"
     u.estado = "ocupada"
 
+    db.session.add(Asignacion(conductor_id=c.id, unidad_id=u.id))
+
     registrar_movimiento("Asignar", f"{c.nombre} → {u.placa}")
     db.session.commit()
     return "", 200
@@ -297,15 +313,31 @@ def finalizar():
     if not is_supervisor():
         return "", 403
 
-    if request.json.get("conductor_id"):
-        c = Conductor.query.get(request.json["conductor_id"])
-        if c: c.estado = "disponible"
+    c_id = request.json.get("conductor_id")
+    u_id = request.json.get("unidad_id")
 
-    if request.json.get("unidad_id"):
-        u = Unidad.query.get(request.json["unidad_id"])
-        if u: u.estado = "disponible"
+    texto = []
 
-    registrar_movimiento("Finalizar operación")
+    if c_id:
+        c = Conductor.query.get(c_id)
+        if c:
+            c.estado = "disponible"
+            texto.append(f"Conductor {c.nombre}")
+
+    if u_id:
+        u = Unidad.query.get(u_id)
+        if u:
+            u.estado = "disponible"
+            texto.append(f"Unidad {u.placa}")
+
+    asignaciones = Asignacion.query.filter_by(activa=True).all()
+    for a in asignaciones:
+        if (c_id and a.conductor_id == int(c_id)) or (u_id and a.unidad_id == int(u_id)):
+            a.activa = False
+
+    detalle = " + ".join(texto)
+    registrar_movimiento("Finalizar", detalle)
+
     db.session.commit()
     return "", 200
 

@@ -44,6 +44,13 @@ transition:0.2s;
 
 .box h5{ margin:0; font-size:13px; }
 .box p{ margin:5px 0 0; font-size:26px; font-weight:bold; }
+
+.asignaciones{
+margin-top:10px;
+background:#f9fafb;
+padding:10px;
+border-radius:10px;
+}
 </style>
 </head>
 
@@ -77,6 +84,11 @@ const userRol = "{{user.rol}}";
 <div class="box disponible"><h5>Disponibles</h5><p id="ud"></p></div>
 <div class="box ocupado"><h5>Ocupadas</h5><p id="uo"></p></div>
 <div class="box inhabilitado"><h5>Inhabilitadas</h5><p id="ui"></p></div>
+</div>
+
+<h4 style="margin-top:15px;">🔗 Asignaciones activas</h4>
+<div class="asignaciones">
+<ul id="asignaciones"></ul>
 </div>
 
 </div>
@@ -193,6 +205,24 @@ return r;
 
 function logout(){ location.href="/logout"; }
 
+// limpiar
+function limpiarTodo(){
+nombre.value="";
+placa.value="";
+editConductorSelect.value="";
+editConductorNombre.value="";
+editUnidadSelect.value="";
+editUnidadPlaca.value="";
+conductorSelect.value="";
+unidadSelect.value="";
+conductorFinal.value="";
+unidadFinal.value="";
+u_id.value="";
+u_user.value="";
+u_pass.value="";
+u_rol.value="user";
+}
+
 // colores
 function colorEstado(e){
 if(e==="disponible") return "green";
@@ -201,7 +231,7 @@ if(e==="inhabilitado") return "red";
 return "black";
 }
 
-// fix selects
+// select fix
 function actualizarSelect(select, lista, key, label){
 let v = select.value;
 select.innerHTML = `<option value="">--</option>` + lista.map(i=>`<option value="${i[key]}">${i[label]}</option>`).join("");
@@ -225,6 +255,10 @@ conductores.innerHTML=d.conductores.map(c=>`
 unidades.innerHTML=d.unidades.map(u=>`
 <li>${u.placa} - <span style="color:${colorEstado(u.estado)}">${u.estado}</span></li>`).join("");
 
+asignaciones.innerHTML = d.asignaciones.length
+? d.asignaciones.map(a=>`<li>👷 ${a.conductor} → 🚛 ${a.unidad}</li>`).join("")
+: "<li>No hay asignaciones activas</li>";
+
 actualizarSelect(conductorSelect,d.conductores,"id","nombre");
 actualizarSelect(unidadSelect,d.unidades,"id","placa");
 actualizarSelect(conductorFinal,d.conductores,"id","nombre");
@@ -236,58 +270,57 @@ actualizarSelect(editUnidadSelect,d.unidades,"id","placa");
 
 if(userRol==="admin"){
 fetch("/movimientos").then(r=>r.json()).then(d=>{
-movimientos.innerHTML=d.map(m=>`
-<li><b>${m.accion}</b> - ${m.usuario} - ${m.fecha}</li>`).join("");
+movimientos.innerHTML = d.map(m=>`
+<li style="margin-bottom:8px;">
+<b>${m.accion}</b><br>
+👤 ${m.usuario}<br>
+🕒 ${m.fecha}
+${m.obs ? `<br>📝 ${m.obs}` : ""}
+</li>
+`).join("");
 });
 
 fetch("/usuarios").then(r=>r.json()).then(d=>{
 listaUsuarios.innerHTML=d.map(u=>`
-<li>
-${u.username} (${u.rol})
+<li>${u.username} (${u.rol})
 <button onclick="editarUsuario(${u.id},'${u.username}','${u.rol}')">Seleccionar</button>
-</li>
-`).join("");
+</li>`).join("");
 });
 }
 
 }
 
-// CRUD normal
-function crearConductor(){ if(!nombre.value) return alert("Nombre"); api("/crear_conductor",{nombre:nombre.value}).then(cargar);}
-function crearUnidad(){ if(!placa.value) return alert("Placa"); api("/crear_unidad",{placa:placa.value}).then(cargar);}
+// CRUD
+function crearConductor(){ api("/crear_conductor",{nombre:nombre.value}).then(()=>{limpiarTodo();cargar();}); }
+function crearUnidad(){ api("/crear_unidad",{placa:placa.value}).then(()=>{limpiarTodo();cargar();}); }
 
-function editarConductor(){ api("/editar_conductor",{id:editConductorSelect.value,nombre:editConductorNombre.value}).then(cargar);}
-function eliminarConductor(){ api("/eliminar_conductor",{id:editConductorSelect.value}).then(cargar);}
+function editarConductor(){ api("/editar_conductor",{id:editConductorSelect.value,nombre:editConductorNombre.value}).then(()=>{limpiarTodo();cargar();}); }
+function eliminarConductor(){ api("/eliminar_conductor",{id:editConductorSelect.value}).then(()=>{limpiarTodo();cargar();}); }
 
-function editarUnidad(){ api("/editar_unidad",{id:editUnidadSelect.value,placa:editUnidadPlaca.value}).then(cargar);}
-function eliminarUnidad(){ api("/eliminar_unidad",{id:editUnidadSelect.value}).then(cargar);}
+function editarUnidad(){ api("/editar_unidad",{id:editUnidadSelect.value,placa:editUnidadPlaca.value}).then(()=>{limpiarTodo();cargar();}); }
+function eliminarUnidad(){ api("/eliminar_unidad",{id:editUnidadSelect.value}).then(()=>{limpiarTodo();cargar();}); }
 
-function asignar(){ api("/asignar",{conductor_id:conductorSelect.value,unidad_id:unidadSelect.value}).then(cargar);}
-function finalizar(){ api("/finalizar",{conductor_id:conductorFinal.value||null,unidad_id:unidadFinal.value||null}).then(cargar);}
+function asignar(){ api("/asignar",{conductor_id:conductorSelect.value,unidad_id:unidadSelect.value}).then(()=>{limpiarTodo();cargar();}); }
+function finalizar(){ api("/finalizar",{conductor_id:conductorFinal.value||null,unidad_id:unidadFinal.value||null}).then(()=>{limpiarTodo();cargar();}); }
 
-// USUARIOS
-function editarUsuario(id,u,r){
-u_id.value=id;u_user.value=u;u_rol.value=r;
-}
-
-function cancelarEdicion(){
-u_id.value="";u_user.value="";u_pass.value="";
-}
+// usuarios
+function editarUsuario(id,u,r){ u_id.value=id;u_user.value=u;u_rol.value=r; }
+function cancelarEdicion(){ limpiarTodo(); }
 
 function crearUsuario(){
 if(!u_user.value||!u_pass.value) return alert("Datos incompletos");
-api("/crear_usuario",{username:u_user.value,password:u_pass.value,rol:u_rol.value}).then(()=>{cancelarEdicion();cargar();});
+api("/crear_usuario",{username:u_user.value,password:u_pass.value,rol:u_rol.value}).then(()=>{limpiarTodo();cargar();});
 }
 
 function editarUsuarioGuardar(){
 if(!u_id.value) return alert("Seleccione usuario");
-api("/editar_usuario",{id:u_id.value,username:u_user.value,password:u_pass.value,rol:u_rol.value}).then(()=>{cancelarEdicion();cargar();});
+api("/editar_usuario",{id:u_id.value,username:u_user.value,password:u_pass.value,rol:u_rol.value}).then(()=>{limpiarTodo();cargar();});
 }
 
 function eliminarUsuarioSeleccion(){
 if(!u_id.value) return alert("Seleccione usuario");
 if(!confirm("Eliminar?")) return;
-api("/eliminar_usuario",{id:u_id.value}).then(()=>{cancelarEdicion();cargar();});
+api("/eliminar_usuario",{id:u_id.value}).then(()=>{limpiarTodo();cargar();});
 }
 
 // roles

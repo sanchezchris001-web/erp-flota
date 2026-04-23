@@ -1,1 +1,11 @@
 git push -f origin main
+
+
+
+git push -f origin main
+
+git add .
+
+git commit -m "cambios"
+
+git push
