@@ -33,7 +33,8 @@ class Unidad(db.Model):
 
 class Movimiento(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    tipo = db.Column(db.String(150))
+    usuario = db.Column(db.String(50))
+    accion = db.Column(db.String(150))
     observacion = db.Column(db.String(200))
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -52,6 +53,14 @@ def is_admin():
 def is_supervisor():
     u = current_user()
     return u and u.rol in ["admin", "supervisor"]
+
+def registrar_movimiento(accion, observacion=""):
+    u = current_user()
+    db.session.add(Movimiento(
+        usuario=u.username if u else "Sistema",
+        accion=accion,
+        observacion=observacion
+    ))
 
 # ================= LOGIN =================
 
@@ -117,12 +126,13 @@ def datos():
 
 @app.route("/movimientos")
 def movimientos():
-    if not require_login():
+    if not is_admin():
         return "", 403
 
     return jsonify([
         {
-            "tipo": m.tipo,
+            "usuario": m.usuario,
+            "accion": m.accion,
             "obs": m.observacion or "",
             "fecha": m.fecha.strftime("%Y-%m-%d %H:%M")
         }
@@ -145,6 +155,7 @@ def crear_usuario():
 
     d = request.json
     db.session.add(Usuario(username=d["username"], password=d["password"], rol=d["rol"]))
+    registrar_movimiento("Crear usuario", d["username"])
     db.session.commit()
     return "", 200
 
@@ -160,6 +171,8 @@ def editar_usuario():
     u.rol = d["rol"]
     if d.get("password"):
         u.password = d["password"]
+
+    registrar_movimiento("Editar usuario", u.username)
     db.session.commit()
     return "", 200
 
@@ -170,6 +183,7 @@ def eliminar_usuario():
         return "", 403
 
     u = Usuario.query.get(request.json["id"])
+    registrar_movimiento("Eliminar usuario", u.username)
     db.session.delete(u)
     db.session.commit()
     return "", 200
@@ -183,7 +197,7 @@ def crear_conductor():
 
     c = Conductor(nombre=request.json["nombre"])
     db.session.add(c)
-    db.session.add(Movimiento(tipo=f"Nuevo conductor: {c.nombre}"))
+    registrar_movimiento("Crear conductor", c.nombre)
     db.session.commit()
     return "", 200
 
@@ -195,7 +209,7 @@ def editar_conductor():
 
     c = Conductor.query.get(request.json["id"])
     c.nombre = request.json["nombre"]
-    db.session.add(Movimiento(tipo=f"Editar conductor: {c.nombre}"))
+    registrar_movimiento("Editar conductor", c.nombre)
     db.session.commit()
     return "", 200
 
@@ -206,8 +220,8 @@ def eliminar_conductor():
         return "", 403
 
     c = Conductor.query.get(request.json["id"])
+    registrar_movimiento("Eliminar conductor", c.nombre)
     db.session.delete(c)
-    db.session.add(Movimiento(tipo="Eliminar conductor"))
     db.session.commit()
     return "", 200
 
@@ -220,7 +234,7 @@ def crear_unidad():
 
     u = Unidad(placa=request.json["placa"])
     db.session.add(u)
-    db.session.add(Movimiento(tipo=f"Nueva unidad: {u.placa}"))
+    registrar_movimiento("Crear unidad", u.placa)
     db.session.commit()
     return "", 200
 
@@ -232,7 +246,7 @@ def editar_unidad():
 
     u = Unidad.query.get(request.json["id"])
     u.placa = request.json["placa"]
-    db.session.add(Movimiento(tipo=f"Editar unidad: {u.placa}"))
+    registrar_movimiento("Editar unidad", u.placa)
     db.session.commit()
     return "", 200
 
@@ -243,8 +257,8 @@ def eliminar_unidad():
         return "", 403
 
     u = Unidad.query.get(request.json["id"])
+    registrar_movimiento("Eliminar unidad", u.placa)
     db.session.delete(u)
-    db.session.add(Movimiento(tipo="Eliminar unidad"))
     db.session.commit()
     return "", 200
 
@@ -262,7 +276,7 @@ def asignar():
     if c: c.estado = "en_ruta"
     if u: u.estado = "ocupada"
 
-    db.session.add(Movimiento(tipo=f"Asignación {c.nombre} → {u.placa}"))
+    registrar_movimiento("Asignar", f"{c.nombre} → {u.placa}")
     db.session.commit()
     return "", 200
 
@@ -282,7 +296,7 @@ def finalizar():
         u = Unidad.query.get(d["unidad_id"])
         if u: u.estado = "disponible"
 
-    db.session.add(Movimiento(tipo="Finalización de operación"))
+    registrar_movimiento("Finalizar operación")
     db.session.commit()
     return "", 200
 

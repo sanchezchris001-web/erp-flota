@@ -26,7 +26,11 @@ input,select{width:100%;padding:6px;margin:4px 0;border-radius:6px;border:1px so
 
 <header>
 <div>🚛 ERP Flota PRO</div>
-<div>{{user.username}} ({{user.rol}})</div>
+
+<div style="display:flex;align-items:center;gap:10px;">
+<span>{{user.username}} ({{user.rol}})</span>
+<button onclick="logout()" class="btn-red">Cerrar sesión</button>
+</div>
 </header>
 
 <script>
@@ -73,7 +77,7 @@ const userRol = "{{user.rol}}";
 </div>
 </div>
 
-<!-- EDICIÓN (MODULO SEPARADO) -->
+<!-- EDICIÓN -->
 <div class="container" id="seccion-editar">
 <div class="card">
 <h3>✏️ Gestión de Conductores</h3>
@@ -116,14 +120,14 @@ const userRol = "{{user.rol}}";
 </div>
 
 <!-- HISTORIAL -->
-<div class="container">
+<div class="container" id="seccion-historial">
 <div class="card">
-<h3>📜 Historial</h3>
+<h3>📜 Historial (Admin)</h3>
 <ul id="movimientos"></ul>
 </div>
 </div>
 
-<!-- USUARIOS (SOLO ADMIN) -->
+<!-- USUARIOS -->
 <div class="container" id="seccion-usuarios">
 <div class="card">
 <h3>👤 Gestión de Usuarios</h3>
@@ -147,7 +151,36 @@ const userRol = "{{user.rol}}";
 
 <script>
 
-// ELEMENTOS
+// ===== FUNCIONES =====
+
+function logout(){
+window.location.href = "/logout";
+}
+
+function colorEstado(e){
+if(e==="disponible") return "green";
+if(e==="en_ruta") return "orange";
+if(e==="ocupada") return "orange";
+if(e==="inhabilitado") return "red";
+return "black";
+}
+
+// 🔥 FIX BUG SELECT
+function actualizarSelect(select, lista, key, label){
+let valorActual = select.value;
+
+let opciones = `<option value="">--</option>` + 
+lista.map(item => `<option value="${item[key]}">${item[label]}</option>`).join("");
+
+select.innerHTML = opciones;
+
+if(valorActual){
+select.value = valorActual;
+}
+}
+
+// ===== ELEMENTOS =====
+
 const cd = document.getElementById("cd");
 const co = document.getElementById("co");
 const ud = document.getElementById("ud");
@@ -180,18 +213,11 @@ const u_pass = document.getElementById("u_pass");
 const u_rol = document.getElementById("u_rol");
 const listaUsuarios = document.getElementById("listaUsuarios");
 
-// FETCH
-function safeFetch(url, options={}){
-return fetch(url, options)
-.then(r=>r.ok?r.json().catch(()=>({})):null)
-.catch(()=>null);
-}
+// ===== CARGAR =====
 
-// CARGAR DATOS
 function cargar(){
 
-safeFetch("/datos").then(d=>{
-if(!d) return;
+fetch("/datos").then(r=>r.json()).then(d=>{
 
 cd.innerText = d.stats.conductores_disponibles;
 co.innerText = d.stats.conductores_ocupados;
@@ -201,38 +227,43 @@ ui.innerText = d.stats.unidades_inhabilitadas;
 
 asignaciones.innerHTML = d.asignaciones.map(a=>`<li>${a.conductor} → ${a.unidad}</li>`).join("");
 
-conductores.innerHTML = d.conductores.map(c=>`<li>${c.nombre}</li>`).join("");
-unidades.innerHTML = d.unidades.map(u=>`<li>${u.placa}</li>`).join("");
+conductores.innerHTML = d.conductores.map(c=>`
+<li>${c.nombre} - <span style="color:${colorEstado(c.estado)}">${c.estado}</span></li>
+`).join("");
 
-let empty = `<option value="">--</option>`;
+unidades.innerHTML = d.unidades.map(u=>`
+<li>${u.placa} - <span style="color:${colorEstado(u.estado)}">${u.estado}</span></li>
+`).join("");
 
-conductorSelect.innerHTML = empty + d.conductores.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join("");
-unidadSelect.innerHTML = empty + d.unidades.map(u=>`<option value="${u.id}">${u.placa}</option>`).join("");
+// 🔥 selects sin bug
+actualizarSelect(conductorSelect, d.conductores, "id", "nombre");
+actualizarSelect(unidadSelect, d.unidades, "id", "placa");
 
-conductorFinal.innerHTML = conductorSelect.innerHTML;
-unidadFinal.innerHTML = unidadSelect.innerHTML;
+actualizarSelect(conductorFinal, d.conductores, "id", "nombre");
+actualizarSelect(unidadFinal, d.unidades, "id", "placa");
 
-editConductorSelect.innerHTML = d.conductores.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join("");
-editUnidadSelect.innerHTML = d.unidades.map(u=>`<option value="${u.id}">${u.placa}</option>`).join("");
+actualizarSelect(editConductorSelect, d.conductores, "id", "nombre");
+actualizarSelect(editUnidadSelect, d.unidades, "id", "placa");
 
 });
 
 // historial
-safeFetch("/movimientos").then(d=>{
-if(!Array.isArray(d)) return;
-
+if(userRol==="admin"){
+fetch("/movimientos").then(r=>r.json()).then(d=>{
 movimientos.innerHTML = d.map(m=>`
 <li>
-<b>${m.tipo}</b><br>
-<small>${m.obs} - ${m.fecha}</small>
-</li>`).join("");
+<b>${m.accion}</b><br>
+👤 ${m.usuario}<br>
+🕒 ${m.fecha}<br>
+📝 ${m.obs}
+</li>
+`).join("");
 });
+}
 
 // usuarios
-if(userRol === "admin"){
-fetch("/usuarios")
-.then(r=>r.json())
-.then(d=>{
+if(userRol==="admin"){
+fetch("/usuarios").then(r=>r.json()).then(d=>{
 listaUsuarios.innerHTML = d.map(u=>`
 <li>
 ${u.username} (${u.rol})
@@ -245,81 +276,68 @@ ${u.username} (${u.rol})
 
 }
 
-// CRUD
+// ===== CRUD =====
+
 function crearConductor(){
-if(!nombre.value.trim()) return;
-safeFetch("/crear_conductor",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({nombre:nombre.value})
-}).then(cargar);
+fetch("/crear_conductor",{method:"POST",headers:{"Content-Type":"application/json"},
+body:JSON.stringify({nombre:nombre.value})}).then(cargar);
 }
 
 function crearUnidad(){
-if(!placa.value.trim()) return;
-safeFetch("/crear_unidad",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({placa:placa.value})
-}).then(cargar);
+fetch("/crear_unidad",{method:"POST",headers:{"Content-Type":"application/json"},
+body:JSON.stringify({placa:placa.value})}).then(cargar);
 }
 
 function editarConductor(){
-safeFetch("/editar_conductor",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({id:editConductorSelect.value,nombre:editConductorNombre.value})
-}).then(cargar);
+fetch("/editar_conductor",{method:"POST",headers:{"Content-Type":"application/json"},
+body:JSON.stringify({id:editConductorSelect.value,nombre:editConductorNombre.value})}).then(cargar);
 }
 
 function eliminarConductor(){
-safeFetch("/eliminar_conductor",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({id:editConductorSelect.value})
-}).then(cargar);
+fetch("/eliminar_conductor",{method:"POST",headers:{"Content-Type":"application/json"},
+body:JSON.stringify({id:editConductorSelect.value})}).then(cargar);
 }
 
 function editarUnidad(){
-safeFetch("/editar_unidad",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({id:editUnidadSelect.value,placa:editUnidadPlaca.value})
-}).then(cargar);
+fetch("/editar_unidad",{method:"POST",headers:{"Content-Type":"application/json"},
+body:JSON.stringify({id:editUnidadSelect.value,placa:editUnidadPlaca.value})}).then(cargar);
 }
 
 function eliminarUnidad(){
-safeFetch("/eliminar_unidad",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({id:editUnidadSelect.value})
-}).then(cargar);
+fetch("/eliminar_unidad",{method:"POST",headers:{"Content-Type":"application/json"},
+body:JSON.stringify({id:editUnidadSelect.value})}).then(cargar);
 }
 
 function asignar(){
-safeFetch("/asignar",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({conductor_id:conductorSelect.value,unidad_id:unidadSelect.value})
-}).then(cargar);
+fetch("/asignar",{method:"POST",headers:{"Content-Type":"application/json"},
+body:JSON.stringify({conductor_id:conductorSelect.value,unidad_id:unidadSelect.value})}).then(cargar);
 }
 
 function finalizar(){
-safeFetch("/finalizar",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({
-conductor_id:conductorFinal.value || null,
-unidad_id:unidadFinal.value || null
-})
-}).then(cargar);
+fetch("/finalizar",{method:"POST",headers:{"Content-Type":"application/json"},
+body:JSON.stringify({conductor_id:conductorFinal.value || null,unidad_id:unidadFinal.value || null})}).then(cargar);
 }
 
-// USUARIOS
+// ===== USUARIOS =====
+
 function editarUsuario(id, username, rol){
-u_id.value = id;
-u_user.value = username;
-u_rol.value = rol;
-u_pass.value = "";
+u_id.value=id;
+u_user.value=username;
+u_rol.value=rol;
+u_pass.value="";
 }
 
 function guardarUsuario(){
-if(!u_user.value.trim()) return;
-
 let url = u_id.value ? "/editar_usuario" : "/crear_usuario";
 
 fetch(url,{
 method:"POST",
 headers:{"Content-Type":"application/json"},
 body:JSON.stringify({
-id: u_id.value,
-username: u_user.value,
-password: u_pass.value,
-rol: u_rol.value
+id:u_id.value,
+username:u_user.value,
+password:u_pass.value,
+rol:u_rol.value
 })
 }).then(()=>{
 u_id.value="";
@@ -332,26 +350,26 @@ cargar();
 function eliminarUsuario(id){
 if(!confirm("¿Eliminar usuario?")) return;
 
-fetch("/eliminar_usuario",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({id})
-}).then(cargar);
+fetch("/eliminar_usuario",{method:"POST",headers:{"Content-Type":"application/json"},
+body:JSON.stringify({id})}).then(cargar);
 }
 
-// ROLES UI
-if(userRol === "user"){
+// ===== ROLES =====
+
+if(userRol==="user"){
 document.getElementById("seccion-crear").style.display="none";
 document.getElementById("seccion-editar").style.display="none";
 document.getElementById("seccion-operaciones").style.display="none";
 }
 
-if(userRol !== "admin"){
+if(userRol!=="admin"){
 document.getElementById("seccion-usuarios").style.display="none";
+document.getElementById("seccion-historial").style.display="none";
 }
 
-// AUTO REFRESH
-setInterval(cargar, 3000);
+// ===== REFRESH =====
+
+setInterval(cargar,3000);
 cargar();
 
 </script>
