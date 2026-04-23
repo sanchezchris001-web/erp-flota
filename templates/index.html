@@ -19,6 +19,31 @@ button{padding:6px 10px;border:none;border-radius:6px;cursor:pointer;margin:2px}
 .btn-gray{background:#6b7280;color:white}
 
 input,select{width:100%;padding:6px;margin:4px 0;border-radius:6px;border:1px solid #ddd}
+
+/* DASHBOARD */
+.gridDash{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+gap:10px;
+margin-top:8px;
+}
+
+.box{
+padding:12px;
+border-radius:12px;
+color:white;
+text-align:center;
+transition:0.2s;
+}
+
+.box:hover{ transform:scale(1.05); }
+
+.disponible{ background:#16a34a; }
+.ocupado{ background:#f59e0b; }
+.inhabilitado{ background:#dc2626; }
+
+.box h5{ margin:0; font-size:13px; }
+.box p{ margin:5px 0 0; font-size:26px; font-weight:bold; }
 </style>
 </head>
 
@@ -26,7 +51,6 @@ input,select{width:100%;padding:6px;margin:4px 0;border-radius:6px;border:1px so
 
 <header>
 <div>🚛 ERP Flota PRO</div>
-
 <div style="display:flex;gap:10px;align-items:center;">
 <span>{{user.username}} ({{user.rol}})</span>
 <button onclick="logout()" class="btn-red">Cerrar sesión</button>
@@ -37,17 +61,28 @@ input,select{width:100%;padding:6px;margin:4px 0;border-radius:6px;border:1px so
 const userRol = "{{user.rol}}";
 </script>
 
+<!-- DASHBOARD -->
 <div class="container">
 <div class="card">
 <h3>📊 Dashboard</h3>
 
-<p>👷 Conductores: <span id="cd"></span> / <span id="co"></span></p>
-<p>🚛 Unidades: <span id="ud"></span> / <span id="uo"></span> / Inh: <span id="ui"></span></p>
+<h4>👷 Conductores</h4>
+<div class="gridDash">
+<div class="box disponible"><h5>Disponibles</h5><p id="cd"></p></div>
+<div class="box ocupado"><h5>En ruta</h5><p id="co"></p></div>
+</div>
 
-<ul id="asignaciones"></ul>
+<h4 style="margin-top:15px;">🚛 Unidades</h4>
+<div class="gridDash">
+<div class="box disponible"><h5>Disponibles</h5><p id="ud"></p></div>
+<div class="box ocupado"><h5>Ocupadas</h5><p id="uo"></p></div>
+<div class="box inhabilitado"><h5>Inhabilitadas</h5><p id="ui"></p></div>
+</div>
+
 </div>
 </div>
 
+<!-- LISTAS -->
 <div class="container">
 <div class="card">
 <h3>Conductores</h3>
@@ -60,6 +95,7 @@ const userRol = "{{user.rol}}";
 </div>
 </div>
 
+<!-- CREAR -->
 <div class="container" id="seccion-crear">
 <div class="card">
 <h3>Crear</h3>
@@ -73,48 +109,43 @@ const userRol = "{{user.rol}}";
 </div>
 </div>
 
+<!-- EDITAR -->
 <div class="container" id="seccion-editar">
 <div class="card">
 <h3>Editar Conductores</h3>
-
 <select id="editConductorSelect"></select>
 <input id="editConductorNombre">
-
 <button onclick="editarConductor()" class="btn-blue">Guardar</button>
 <button onclick="eliminarConductor()" class="btn-red">Eliminar</button>
 </div>
 
 <div class="card">
 <h3>Editar Unidades</h3>
-
 <select id="editUnidadSelect"></select>
 <input id="editUnidadPlaca">
-
 <button onclick="editarUnidad()" class="btn-blue">Guardar</button>
 <button onclick="eliminarUnidad()" class="btn-red">Eliminar</button>
 </div>
 </div>
 
+<!-- OPERACIONES -->
 <div class="container" id="seccion-operaciones">
 <div class="card">
 <h3>Asignar</h3>
-
 <select id="conductorSelect"></select>
 <select id="unidadSelect"></select>
-
 <button onclick="asignar()" class="btn-blue">Asignar</button>
 </div>
 
 <div class="card">
 <h3>Finalizar</h3>
-
 <select id="conductorFinal"></select>
 <select id="unidadFinal"></select>
-
 <button onclick="finalizar()" class="btn-gray">Finalizar</button>
 </div>
 </div>
 
+<!-- HISTORIAL -->
 <div class="container" id="seccion-historial">
 <div class="card">
 <h3>Historial</h3>
@@ -122,6 +153,7 @@ const userRol = "{{user.rol}}";
 </div>
 </div>
 
+<!-- USUARIOS -->
 <div class="container" id="seccion-usuarios">
 <div class="card">
 <h3>Usuarios</h3>
@@ -131,12 +163,13 @@ const userRol = "{{user.rol}}";
 <input id="u_pass" placeholder="Password">
 
 <select id="u_rol">
-<option>admin</option>
-<option>supervisor</option>
-<option>user</option>
+<option value="admin">admin</option>
+<option value="supervisor">supervisor</option>
+<option value="user">user</option>
 </select>
 
-<button onclick="guardarUsuario()" class="btn-green">Guardar</button>
+<button id="btnGuardarUsuario" onclick="guardarUsuario()" class="btn-green">Crear</button>
+<button onclick="cancelarEdicion()" class="btn-gray">Cancelar</button>
 
 <ul id="listaUsuarios"></ul>
 </div>
@@ -144,23 +177,21 @@ const userRol = "{{user.rol}}";
 
 <script>
 
-// ===== API SEGURA =====
+// API
 function api(url,data={}){
 return fetch(url,{
 method:"POST",
 headers:{"Content-Type":"application/json"},
 body:JSON.stringify(data)
-})
-.then(r=>{
+}).then(r=>{
 if(!r.ok) throw "Error servidor";
 return r;
-})
-.catch(e=>alert(e));
+}).catch(e=>alert(e));
 }
 
-// ===== UTIL =====
 function logout(){ location.href="/logout"; }
 
+// colores
 function colorEstado(e){
 if(e==="disponible") return "green";
 if(e==="en_ruta"||e==="ocupada") return "orange";
@@ -168,45 +199,14 @@ if(e==="inhabilitado") return "red";
 return "black";
 }
 
+// fix selects
 function actualizarSelect(select, lista, key, label){
 let v = select.value;
 select.innerHTML = `<option value="">--</option>` + lista.map(i=>`<option value="${i[key]}">${i[label]}</option>`).join("");
 if(v) select.value=v;
 }
 
-// ===== ELEMENTOS =====
-const cd = document.getElementById("cd");
-const co = document.getElementById("co");
-const ud = document.getElementById("ud");
-const uo = document.getElementById("uo");
-const ui = document.getElementById("ui");
-
-const conductores = document.getElementById("conductores");
-const unidades = document.getElementById("unidades");
-const movimientos = document.getElementById("movimientos");
-
-const nombre = document.getElementById("nombre");
-const placa = document.getElementById("placa");
-
-const editConductorSelect = document.getElementById("editConductorSelect");
-const editConductorNombre = document.getElementById("editConductorNombre");
-
-const editUnidadSelect = document.getElementById("editUnidadSelect");
-const editUnidadPlaca = document.getElementById("editUnidadPlaca");
-
-const conductorSelect = document.getElementById("conductorSelect");
-const unidadSelect = document.getElementById("unidadSelect");
-
-const conductorFinal = document.getElementById("conductorFinal");
-const unidadFinal = document.getElementById("unidadFinal");
-
-const u_id = document.getElementById("u_id");
-const u_user = document.getElementById("u_user");
-const u_pass = document.getElementById("u_pass");
-const u_rol = document.getElementById("u_rol");
-const listaUsuarios = document.getElementById("listaUsuarios");
-
-// ===== CARGAR =====
+// cargar
 function cargar(){
 
 fetch("/datos").then(r=>r.json()).then(d=>{
@@ -232,6 +232,7 @@ actualizarSelect(editUnidadSelect,d.unidades,"id","placa");
 
 });
 
+// historial + usuarios
 if(userRol==="admin"){
 fetch("/movimientos").then(r=>r.json()).then(d=>{
 movimientos.innerHTML=d.map(m=>`
@@ -240,7 +241,8 @@ movimientos.innerHTML=d.map(m=>`
 
 fetch("/usuarios").then(r=>r.json()).then(d=>{
 listaUsuarios.innerHTML=d.map(u=>`
-<li>${u.username} (${u.rol})
+<li>
+${u.username} (${u.rol})
 <button onclick="editarUsuario(${u.id},'${u.username}','${u.rol}')">✏️</button>
 <button onclick="eliminarUsuario(${u.id})">❌</button>
 </li>`).join("");
@@ -249,53 +251,34 @@ listaUsuarios.innerHTML=d.map(u=>`
 
 }
 
-// ===== FUNCIONES =====
-function crearConductor(){
-if(!nombre.value.trim()) return alert("Nombre requerido");
-api("/crear_conductor",{nombre:nombre.value}).then(cargar);
-}
+// CRUD
+function crearConductor(){ if(!nombre.value) return alert("Nombre"); api("/crear_conductor",{nombre:nombre.value}).then(cargar);}
+function crearUnidad(){ if(!placa.value) return alert("Placa"); api("/crear_unidad",{placa:placa.value}).then(cargar);}
 
-function crearUnidad(){
-if(!placa.value.trim()) return alert("Placa requerida");
-api("/crear_unidad",{placa:placa.value}).then(cargar);
-}
+function editarConductor(){ api("/editar_conductor",{id:editConductorSelect.value,nombre:editConductorNombre.value}).then(cargar);}
+function eliminarConductor(){ api("/eliminar_conductor",{id:editConductorSelect.value}).then(cargar);}
 
-function editarConductor(){
-if(!editConductorSelect.value) return;
-api("/editar_conductor",{id:editConductorSelect.value,nombre:editConductorNombre.value}).then(cargar);
-}
+function editarUnidad(){ api("/editar_unidad",{id:editUnidadSelect.value,placa:editUnidadPlaca.value}).then(cargar);}
+function eliminarUnidad(){ api("/eliminar_unidad",{id:editUnidadSelect.value}).then(cargar);}
 
-function eliminarConductor(){
-api("/eliminar_conductor",{id:editConductorSelect.value}).then(cargar);
-}
-
-function editarUnidad(){
-if(!editUnidadSelect.value) return;
-api("/editar_unidad",{id:editUnidadSelect.value,placa:editUnidadPlaca.value}).then(cargar);
-}
-
-function eliminarUnidad(){
-api("/eliminar_unidad",{id:editUnidadSelect.value}).then(cargar);
-}
-
-function asignar(){
-if(!conductorSelect.value||!unidadSelect.value) return alert("Seleccione datos");
-api("/asignar",{conductor_id:conductorSelect.value,unidad_id:unidadSelect.value}).then(cargar);
-}
-
-function finalizar(){
-api("/finalizar",{conductor_id:conductorFinal.value||null,unidad_id:unidadFinal.value||null}).then(cargar);
-}
+function asignar(){ api("/asignar",{conductor_id:conductorSelect.value,unidad_id:unidadSelect.value}).then(cargar);}
+function finalizar(){ api("/finalizar",{conductor_id:conductorFinal.value||null,unidad_id:unidadFinal.value||null}).then(cargar);}
 
 // usuarios
 function editarUsuario(id,u,r){
-u_id.value=id;u_user.value=u;u_rol.value=r;u_pass.value="";
+u_id.value=id;u_user.value=u;u_rol.value=r;
+document.getElementById("btnGuardarUsuario").innerText="Actualizar";
+}
+
+function cancelarEdicion(){
+u_id.value="";u_user.value="";u_pass.value="";
+document.getElementById("btnGuardarUsuario").innerText="Crear";
 }
 
 function guardarUsuario(){
 api(u_id.value?"/editar_usuario":"/crear_usuario",{
 id:u_id.value,username:u_user.value,password:u_pass.value,rol:u_rol.value
-}).then(()=>{u_id.value="";u_user.value="";u_pass.value="";cargar();});
+}).then(()=>{cancelarEdicion();cargar();});
 }
 
 function eliminarUsuario(id){
@@ -303,7 +286,7 @@ if(!confirm("Eliminar?")) return;
 api("/eliminar_usuario",{id}).then(cargar);
 }
 
-// ===== ROLES =====
+// roles
 if(userRol==="user"){
 document.getElementById("seccion-crear").style.display="none";
 document.getElementById("seccion-editar").style.display="none";
@@ -314,7 +297,7 @@ document.getElementById("seccion-usuarios").style.display="none";
 document.getElementById("seccion-historial").style.display="none";
 }
 
-// ===== INIT =====
+// init
 setInterval(cargar,3000);
 cargar();
 
