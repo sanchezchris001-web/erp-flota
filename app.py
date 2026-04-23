@@ -1,355 +1,212 @@
-import os
-from flask import Flask, render_template, request, jsonify, session, redirect
-from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, request, jsonify, session, redirect, render_template
+import sqlite3
 from datetime import datetime
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "secret123"
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///db.sqlite3"
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.secret_key = "secret123"
 
-db = SQLAlchemy(app)
+DB = "database.db"
 
-# ================= MODELOS =================
+# ================= CONEXIÓN =================
+def get_db():
+    conn = sqlite3.connect(DB)
+    conn.row_factory = sqlite3.Row
+    return conn
 
-class Usuario(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(50), unique=True)
-    password = db.Column(db.String(50))
-    rol = db.Column(db.String(20))
-
-class Conductor(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(100))
-    estado = db.Column(db.String(20), default="disponible")
-
-class Unidad(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    placa = db.Column(db.String(50))
-    estado = db.Column(db.String(20), default="disponible")
-
-class Asignacion(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    conductor_id = db.Column(db.Integer)
-    unidad_id = db.Column(db.Integer)
-    activa = db.Column(db.Boolean, default=True)
-
-class Movimiento(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    usuario = db.Column(db.String(50))
-    accion = db.Column(db.String(150))
-    observacion = db.Column(db.String(200))
-    fecha = db.Column(db.DateTime, default=datetime.utcnow)
-
-# ================= HELPERS =================
-
-def require_login():
-    return "user_id" in session
-
-def current_user():
-    return Usuario.query.get(session["user_id"]) if require_login() else None
-
-def is_admin():
-    u = current_user()
-    return u and u.rol == "admin"
-
-def is_supervisor():
-    u = current_user()
-    return u and u.rol in ["admin", "supervisor"]
-
-def registrar_movimiento(accion, observacion=""):
-    u = current_user()
-    db.session.add(Movimiento(
-        usuario=u.username if u else "Sistema",
-        accion=accion,
-        observacion=observacion
-    ))
-
-# ================= LOGIN =================
-
-@app.route("/", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        u = Usuario.query.filter_by(
-            username=request.form["username"],
-            password=request.form["password"]
-        ).first()
-
-        if u:
-            session["user_id"] = u.id
-            return redirect("/home")
-        else:
-            return render_template("login.html")
-
-    return render_template("login.html")
-
-@app.route("/home")
-def home():
-    if not require_login():
-        return redirect("/")
-    return render_template("index.html", user=current_user())
-
+# ================= LOGIN (ejemplo base) =================
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect("/")
 
-# ================= DATOS =================
-
+# ================= DATOS DASHBOARD =================
 @app.route("/datos")
 def datos():
-    if not require_login():
-        return "", 403
+    conn = get_db()
+    cur = conn.cursor()
 
-    conductores = Conductor.query.all()
-    unidades = Unidad.query.all()
-    asignaciones = Asignacion.query.filter_by(activa=True).all()
+    conductores = cur.execute("SELECT * FROM conductores").fetchall()
+    unidades = cur.execute("SELECT * FROM unidades").fetchall()
+
+    asignaciones = cur.execute("""
+        SELECT c.nombre as conductor, u.placa as unidad
+        FROM asignaciones a
+        JOIN conductores c ON c.id = a.conductor_id
+        JOIN unidades u ON u.id = a.unidad_id
+    """).fetchall()
+
+    stats = {
+        "conductores_disponibles": cur.execute("SELECT COUNT(*) FROM conductores WHERE estado='disponible'").fetchone()[0],
+        "conductores_ocupados": cur.execute("SELECT COUNT(*) FROM conductores WHERE estado='en_ruta'").fetchone()[0],
+        "unidades_disponibles": cur.execute("SELECT COUNT(*) FROM unidades WHERE estado='disponible'").fetchone()[0],
+        "unidades_ocupadas": cur.execute("SELECT COUNT(*) FROM unidades WHERE estado='ocupada'").fetchone()[0],
+        "unidades_inhabilitadas": cur.execute("SELECT COUNT(*) FROM unidades WHERE estado='inhabilitado'").fetchone()[0],
+    }
+
+    conn.close()
 
     return jsonify({
-        "conductores":[{"id":c.id,"nombre":c.nombre,"estado":c.estado} for c in conductores],
-        "unidades":[{"id":u.id,"placa":u.placa,"estado":u.estado} for u in unidades],
-
-        "asignaciones":[
-            {
-                "conductor": Conductor.query.get(a.conductor_id).nombre,
-                "unidad": Unidad.query.get(a.unidad_id).placa
-            }
-            for a in asignaciones
-        ],
-
-        "stats":{
-            "conductores_disponibles": len([c for c in conductores if c.estado=="disponible"]),
-            "conductores_ocupados": len([c for c in conductores if c.estado=="en_ruta"]),
-            "unidades_disponibles": len([u for u in unidades if u.estado=="disponible"]),
-            "unidades_ocupadas": len([u for u in unidades if u.estado=="ocupada"]),
-            "unidades_inhabilitadas": len([u for u in unidades if u.estado=="inhabilitado"])
-        }
+        "conductores": [dict(x) for x in conductores],
+        "unidades": [dict(x) for x in unidades],
+        "asignaciones": [dict(x) for x in asignaciones],
+        "stats": stats
     })
 
-# ================= HISTORIAL =================
-
-@app.route("/movimientos")
-def movimientos():
-    if not is_admin():
-        return "", 403
-
-    data = Movimiento.query.order_by(Movimiento.fecha.desc()).all()
-
-    return jsonify([
-        {
-            "usuario": m.usuario,
-            "accion": m.accion,
-            "obs": m.observacion or "",
-            "fecha": m.fecha.strftime("%Y-%m-%d %H:%M")
-        }
-        for m in data
-    ])
-
-# ================= USUARIOS =================
-
-@app.route("/usuarios")
-def listar_usuarios():
-    if not is_admin():
-        return "", 403
-
-    return jsonify([
-        {"id":u.id,"username":u.username,"rol":u.rol}
-        for u in Usuario.query.all()
-    ])
-
-@app.route("/crear_usuario", methods=["POST"])
-def crear_usuario():
-    if not is_admin():
-        return "", 403
-
-    d = request.json
-
-    if not d.get("username") or not d.get("password"):
-        return "Datos incompletos", 400
-
-    if Usuario.query.filter_by(username=d["username"]).first():
-        return "Usuario ya existe", 400
-
-    nuevo = Usuario(
-        username=d["username"],
-        password=d["password"],
-        rol=d.get("rol","user")
-    )
-
-    db.session.add(nuevo)
-    registrar_movimiento("Crear usuario", d["username"])
-    db.session.commit()
-    return "", 200
-
-@app.route("/editar_usuario", methods=["POST"])
-def editar_usuario():
-    if not is_admin():
-        return "", 403
-
-    d = request.json
-    u = Usuario.query.get(d.get("id"))
-
-    if not u:
-        return "No encontrado", 404
-
-    u.username = d.get("username", u.username)
-    u.rol = d.get("rol", u.rol)
-
-    if d.get("password"):
-        u.password = d["password"]
-
-    registrar_movimiento("Editar usuario", u.username)
-    db.session.commit()
-    return "", 200
-
-@app.route("/eliminar_usuario", methods=["POST"])
-def eliminar_usuario():
-    if not is_admin():
-        return "", 403
-
-    d = request.json
-    u = Usuario.query.get(d.get("id"))
-
-    if not u:
-        return "No encontrado", 404
-
-    if u.id == session.get("user_id"):
-        return "No puedes eliminarte", 400
-
-    registrar_movimiento("Eliminar usuario", u.username)
-    db.session.delete(u)
-    db.session.commit()
-    return "", 200
-
-# ================= CRUD =================
-
+# ================= CRUD BÁSICO =================
 @app.route("/crear_conductor", methods=["POST"])
 def crear_conductor():
-    if not is_supervisor():
-        return "", 403
-
-    d = request.json
-    c = Conductor(nombre=d["nombre"])
-    db.session.add(c)
-    registrar_movimiento("Crear conductor", c.nombre)
-    db.session.commit()
-    return "", 200
+    data = request.json
+    conn = get_db()
+    conn.execute("INSERT INTO conductores(nombre, estado) VALUES(?, 'disponible')",
+                 (data["nombre"],))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
 
 @app.route("/crear_unidad", methods=["POST"])
 def crear_unidad():
-    if not is_supervisor():
-        return "", 403
+    data = request.json
+    conn = get_db()
+    conn.execute("INSERT INTO unidades(placa, estado) VALUES(?, 'disponible')",
+                 (data["placa"],))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
 
-    d = request.json
-    u = Unidad(placa=d["placa"])
-    db.session.add(u)
-    registrar_movimiento("Crear unidad", u.placa)
-    db.session.commit()
-    return "", 200
-
-@app.route("/editar_conductor", methods=["POST"])
-def editar_conductor():
-    if not is_supervisor():
-        return "", 403
-
-    c = Conductor.query.get(request.json["id"])
-    c.nombre = request.json["nombre"]
-    registrar_movimiento("Editar conductor", c.nombre)
-    db.session.commit()
-    return "", 200
-
-@app.route("/editar_unidad", methods=["POST"])
-def editar_unidad():
-    if not is_supervisor():
-        return "", 403
-
-    u = Unidad.query.get(request.json["id"])
-    u.placa = request.json["placa"]
-    registrar_movimiento("Editar unidad", u.placa)
-    db.session.commit()
-    return "", 200
-
-@app.route("/eliminar_conductor", methods=["POST"])
-def eliminar_conductor():
-    if not is_supervisor():
-        return "", 403
-
-    c = Conductor.query.get(request.json["id"])
-    registrar_movimiento("Eliminar conductor", c.nombre)
-    db.session.delete(c)
-    db.session.commit()
-    return "", 200
-
-@app.route("/eliminar_unidad", methods=["POST"])
-def eliminar_unidad():
-    if not is_supervisor():
-        return "", 403
-
-    u = Unidad.query.get(request.json["id"])
-    registrar_movimiento("Eliminar unidad", u.placa)
-    db.session.delete(u)
-    db.session.commit()
-    return "", 200
-
+# ================= ASIGNAR =================
 @app.route("/asignar", methods=["POST"])
 def asignar():
-    if not is_supervisor():
-        return "", 403
+    data = request.json
+    conn = get_db()
 
-    c = Conductor.query.get(request.json["conductor_id"])
-    u = Unidad.query.get(request.json["unidad_id"])
+    conn.execute("""
+        INSERT INTO asignaciones(conductor_id, unidad_id)
+        VALUES(?, ?)
+    """, (data["conductor_id"], data["unidad_id"]))
 
-    c.estado = "en_ruta"
-    u.estado = "ocupada"
+    conn.execute("UPDATE conductores SET estado='en_ruta' WHERE id=?",
+                 (data["conductor_id"],))
 
-    db.session.add(Asignacion(conductor_id=c.id, unidad_id=u.id))
+    conn.execute("UPDATE unidades SET estado='ocupada' WHERE id=?",
+                 (data["unidad_id"],))
 
-    registrar_movimiento("Asignar", f"{c.nombre} → {u.placa}")
-    db.session.commit()
-    return "", 200
+    conn.commit()
+    conn.close()
 
+    return jsonify({"ok": True})
+
+# ================= FINALIZAR =================
 @app.route("/finalizar", methods=["POST"])
 def finalizar():
-    if not is_supervisor():
-        return "", 403
+    data = request.json
+    conn = get_db()
 
-    c_id = request.json.get("conductor_id")
-    u_id = request.json.get("unidad_id")
+    conn.execute("DELETE FROM asignaciones WHERE conductor_id=? OR unidad_id=?",
+                 (data.get("conductor_id"), data.get("unidad_id")))
 
-    texto = []
+    conn.execute("UPDATE conductores SET estado='disponible' WHERE id=?",
+                 (data.get("conductor_id"),))
 
-    if c_id:
-        c = Conductor.query.get(c_id)
-        if c:
-            c.estado = "disponible"
-            texto.append(f"Conductor {c.nombre}")
+    conn.execute("UPDATE unidades SET estado='disponible' WHERE id=?",
+                 (data.get("unidad_id"),))
 
-    if u_id:
-        u = Unidad.query.get(u_id)
-        if u:
-            u.estado = "disponible"
-            texto.append(f"Unidad {u.placa}")
+    conn.commit()
+    conn.close()
 
-    asignaciones = Asignacion.query.filter_by(activa=True).all()
-    for a in asignaciones:
-        if (c_id and a.conductor_id == int(c_id)) or (u_id and a.unidad_id == int(u_id)):
-            a.activa = False
+    return jsonify({"ok": True})
 
-    detalle = " + ".join(texto)
-    registrar_movimiento("Finalizar", detalle)
+# ================= ⭐ NUEVO: ESTADO UNIDAD =================
+@app.route("/cambiar_estado_unidad", methods=["POST"])
+def cambiar_estado_unidad():
+    data = request.json
 
-    db.session.commit()
-    return "", 200
+    unidad_id = data.get("unidad_id")
+    estado = data.get("estado")
+    observacion = data.get("observacion", "")
 
-# ================= INIT =================
+    if not unidad_id or not estado:
+        return jsonify({"error": "datos incompletos"}), 400
 
+    conn = get_db()
+
+    # actualizar estado
+    conn.execute("""
+        UPDATE unidades
+        SET estado=?
+        WHERE id=?
+    """, (estado, unidad_id))
+
+    # registrar movimiento
+    conn.execute("""
+        INSERT INTO movimientos(accion, usuario, fecha, obs)
+        VALUES(?,?,?,?)
+    """, (
+        f"Unidad {estado}",
+        session.get("user", "system"),
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        observacion
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"ok": True})
+
+# ================= MOVIMIENTOS =================
+@app.route("/movimientos")
+def movimientos():
+    conn = get_db()
+    data = conn.execute("SELECT * FROM movimientos ORDER BY id DESC").fetchall()
+    conn.close()
+    return jsonify([dict(x) for x in data])
+
+# ================= USUARIOS (BASE SIMPLE) =================
+@app.route("/usuarios")
+def usuarios():
+    conn = get_db()
+    data = conn.execute("SELECT id, username, rol FROM usuarios").fetchall()
+    conn.close()
+    return jsonify([dict(x) for x in data])
+
+@app.route("/crear_usuario", methods=["POST"])
+def crear_usuario():
+    data = request.json
+    conn = get_db()
+    conn.execute("""
+        INSERT INTO usuarios(username, password, rol)
+        VALUES(?,?,?)
+    """, (data["username"], data["password"], data["rol"]))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+@app.route("/editar_usuario", methods=["POST"])
+def editar_usuario():
+    data = request.json
+    conn = get_db()
+    conn.execute("""
+        UPDATE usuarios
+        SET username=?, password=?, rol=?
+        WHERE id=?
+    """, (data["username"], data["password"], data["rol"], data["id"]))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+@app.route("/eliminar_usuario", methods=["POST"])
+def eliminar_usuario():
+    data = request.json
+    conn = get_db()
+    conn.execute("DELETE FROM usuarios WHERE id=?", (data["id"],))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+# ================= INICIO =================
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+# ================= RUN =================
 if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()
-
-        if not Usuario.query.filter_by(username="admin").first():
-            db.session.add(Usuario(username="admin", password="admin", rol="admin"))
-            db.session.commit()
-
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(debug=True)

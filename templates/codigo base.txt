@@ -2,52 +2,94 @@
 <html>
 <head>
 <title>ERP Flota PRO</title>
-<script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
 
 <style>
 body{font-family:'Segoe UI';background:#f4f6fb;margin:0}
+
 header{background:#111827;color:white;padding:15px 25px;display:flex;justify-content:space-between}
+
 .container{padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+
 .card{background:white;padding:20px;border-radius:15px;box-shadow:0 4px 15px rgba(0,0,0,0.08)}
-.kpi{font-size:18px;font-weight:bold}
-.green{color:#16a34a}
-.red{color:#dc2626}
-.gray{color:#6b7280}
+
 button{padding:6px 10px;border:none;border-radius:6px;cursor:pointer;margin:2px}
 .btn-blue{background:#2563eb;color:white}
 .btn-green{background:#16a34a;color:white}
 .btn-red{background:#dc2626;color:white}
 .btn-gray{background:#6b7280;color:white}
+
 input,select{width:100%;padding:6px;margin:4px 0;border-radius:6px;border:1px solid #ddd}
-.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:none;justify-content:center;align-items:center}
-.modal-box{background:white;padding:20px;border-radius:10px;width:300px}
-.hidden{display:none}
+
+/* DASHBOARD */
+.gridDash{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+gap:10px;
+margin-top:8px;
+}
+
+.box{
+padding:12px;
+border-radius:12px;
+color:white;
+text-align:center;
+transition:0.2s;
+}
+
+.box:hover{ transform:scale(1.05); }
+
+.disponible{ background:#16a34a; }
+.ocupado{ background:#f59e0b; }
+.inhabilitado{ background:#dc2626; }
+
+.box h5{ margin:0; font-size:13px; }
+.box p{ margin:5px 0 0; font-size:26px; font-weight:bold; }
+
+.asignaciones{
+margin-top:10px;
+background:#f9fafb;
+padding:10px;
+border-radius:10px;
+}
 </style>
 </head>
 
 <body>
 
 <header>
-<div>🚛 SISTEMA DE CONTROL</div>
-<div>{{user.username}} ({{user.rol}}) <a href="/logout" style="color:white">Salir</a></div>
+<div>🚛 ERP Flota PRO</div>
+<div style="display:flex;gap:10px;align-items:center;">
+<span>{{user.username}} ({{user.rol}})</span>
+<button onclick="logout()" class="btn-red">Cerrar sesión</button>
+</div>
 </header>
+
+<script>
+const userRol = "{{user.rol}}";
+</script>
 
 <!-- DASHBOARD -->
 <div class="container">
 <div class="card">
 <h3>📊 Dashboard</h3>
 
-<p>👷 Conductores</p>
-<div class="kpi green">Disponibles: <span id="cd"></span></div>
-<div class="kpi red">En ruta: <span id="co"></span></div>
+<h4>👷 Conductores</h4>
+<div class="gridDash">
+<div class="box disponible"><h5>Disponibles</h5><p id="cd"></p></div>
+<div class="box ocupado"><h5>En ruta</h5><p id="co"></p></div>
+</div>
 
-<p>🚛 Unidades</p>
-<div class="kpi green">Disponibles: <span id="ud"></span></div>
-<div class="kpi red">Ocupadas: <span id="uo"></span></div>
-<div class="kpi gray">Inhabilitadas: <span id="ui"></span></div>
+<h4 style="margin-top:15px;">🚛 Unidades</h4>
+<div class="gridDash">
+<div class="box disponible"><h5>Disponibles</h5><p id="ud"></p></div>
+<div class="box ocupado"><h5>Ocupadas</h5><p id="uo"></p></div>
+<div class="box inhabilitado"><h5>Inhabilitadas</h5><p id="ui"></p></div>
+</div>
 
-<h4>📦 Asignaciones actuales</h4>
+<h4 style="margin-top:15px;">🔗 Asignaciones activas</h4>
+<div class="asignaciones">
 <ul id="asignaciones"></ul>
+</div>
 
 </div>
 </div>
@@ -55,131 +97,150 @@ input,select{width:100%;padding:6px;margin:4px 0;border-radius:6px;border:1px so
 <!-- LISTAS -->
 <div class="container">
 <div class="card">
-<h3>👷 Conductores</h3>
+<h3>Conductores</h3>
 <ul id="conductores"></ul>
 </div>
 
 <div class="card">
-<h3>🚛 Unidades</h3>
+<h3>Unidades</h3>
 <ul id="unidades"></ul>
 </div>
 </div>
 
-<!-- OPERACIONES -->
-<div class="container modulo-operaciones">
-
+<!-- CREAR -->
+<div class="container" id="seccion-crear">
 <div class="card">
-<h3>➕ AGREGAR CONDUCTORES O UNIDADES</h3>
-<input id="nombre" placeholder="Nombre conductor">
-<button class="btn-green" onclick="crearConductor()">Agregar Conductor</button>
+<h3>Crear</h3>
 
-<input id="placa" placeholder="Placa unidad">
-<button class="btn-green" onclick="crearUnidad()">Agregar Unidad</button>
+<input id="nombre" placeholder="Conductor">
+<button onclick="crearConductor()" class="btn-green">Agregar</button>
+
+<input id="placa" placeholder="Unidad">
+<button onclick="crearUnidad()" class="btn-green">Agregar</button>
+
+</div>
+</div>
+
+<!-- EDITAR -->
+<div class="container" id="seccion-editar">
+<div class="card">
+<h3>Editar Conductores</h3>
+<select id="editConductorSelect"></select>
+<input id="editConductorNombre">
+<button onclick="editarConductor()" class="btn-blue">Guardar</button>
+<button onclick="eliminarConductor()" class="btn-red">Eliminar</button>
 </div>
 
 <div class="card">
-<h3>🔁 ASIGNAR UNIDADES</h3>
+<h3>Editar Unidades</h3>
+<select id="editUnidadSelect"></select>
+<input id="editUnidadPlaca">
+<button onclick="editarUnidad()" class="btn-blue">Guardar</button>
+<button onclick="eliminarUnidad()" class="btn-red">Eliminar</button>
+</div>
+</div>
+
+<!-- OPERACIONES -->
+<div class="container" id="seccion-operaciones">
+<div class="card">
+<h3>Asignar</h3>
 <select id="conductorSelect"></select>
 <select id="unidadSelect"></select>
-<button class="btn-blue" onclick="asignar()">Asignar</button>
+<button onclick="asignar()" class="btn-blue">Asignar</button>
 </div>
 
 <div class="card">
-<h3>🏁 FINALIZAR COMISIÓN</h3>
+<h3>Finalizar</h3>
 <select id="conductorFinal"></select>
 <select id="unidadFinal"></select>
-<button class="btn-gray" onclick="finalizar()">Finalizar</button>
+<button onclick="finalizar()" class="btn-gray">Finalizar</button>
 </div>
-
-<div class="card">
-<h3>🚫 INHABILITAR / HABILITAR UNIDAD</h3>
-<select id="unidadInh"></select>
-<input id="obsInh" placeholder="Observación">
-<button class="btn-red" onclick="inhabilitar()">Inhabilitar</button>
-
-<select id="unidadHab"></select>
-<button class="btn-green" onclick="habilitar()">Habilitar</button>
-</div>
-
 </div>
 
 <!-- HISTORIAL -->
-<div class="container modulo-historial">
+<div class="container" id="seccion-historial">
 <div class="card">
-<h3>📜 Historial</h3>
+<h3>Historial</h3>
 <ul id="movimientos"></ul>
 </div>
 </div>
 
 <!-- USUARIOS -->
-<div class="container modulo-usuarios">
+<div class="container" id="seccion-usuarios">
 <div class="card">
-<button class="btn-blue" onclick="abrirModal()">Administrar Usuarios</button>
-</div>
-</div>
-
-<!-- MODAL -->
-<div id="modalUsuarios" class="modal">
-<div class="modal-box">
-
 <h3>Usuarios</h3>
 
-<input id="mu_user" placeholder="Usuario">
-<input id="mu_pass" placeholder="Password">
-<select id="mu_rol">
-<option>admin</option>
-<option>supervisor</option>
-<option>user</option>
+<input id="u_id" type="hidden">
+<input id="u_user" placeholder="Usuario">
+<input id="u_pass" placeholder="Password">
+
+<select id="u_rol">
+<option value="admin">admin</option>
+<option value="supervisor">supervisor</option>
+<option value="user">user</option>
 </select>
-<button onclick="crearUsuario()">Crear</button>
+
+<button onclick="crearUsuario()" class="btn-green">Crear</button>
+<button onclick="editarUsuarioGuardar()" class="btn-blue">Editar</button>
+<button onclick="eliminarUsuarioSeleccion()" class="btn-red">Eliminar</button>
+<button onclick="cancelarEdicion()" class="btn-gray">Limpiar</button>
 
 <ul id="listaUsuarios"></ul>
-
-<button onclick="cerrarModal()">Cerrar</button>
-
 </div>
 </div>
+
 <script>
-const socket = io();
-const ROL = "{{user.rol}}";
 
-// KPI
-const cd=document.getElementById("cd");
-const co=document.getElementById("co");
-const ud=document.getElementById("ud");
-const uo=document.getElementById("uo");
-const ui=document.getElementById("ui");
+// API
+function api(url,data={}){
+return fetch(url,{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify(data)
+}).then(r=>{
+if(!r.ok) throw "Error servidor";
+return r;
+}).catch(e=>alert(e));
+}
 
-// listas
-const asignaciones=document.getElementById("asignaciones");
-const conductores=document.getElementById("conductores");
-const unidades=document.getElementById("unidades");
-const movimientos=document.getElementById("movimientos");
+function logout(){ location.href="/logout"; }
 
-// selects
-const conductorSelect=document.getElementById("conductorSelect");
-const unidadSelect=document.getElementById("unidadSelect");
-const conductorFinal=document.getElementById("conductorFinal");
-const unidadFinal=document.getElementById("unidadFinal");
-const unidadInh=document.getElementById("unidadInh");
-const unidadHab=document.getElementById("unidadHab");
+// limpiar
+function limpiarTodo(){
+nombre.value="";
+placa.value="";
+editConductorSelect.value="";
+editConductorNombre.value="";
+editUnidadSelect.value="";
+editUnidadPlaca.value="";
+conductorSelect.value="";
+unidadSelect.value="";
+conductorFinal.value="";
+unidadFinal.value="";
+u_id.value="";
+u_user.value="";
+u_pass.value="";
+u_rol.value="user";
+}
 
-// inputs
-const obsInh=document.getElementById("obsInh");
-const nombre=document.getElementById("nombre");
-const placa=document.getElementById("placa");
+// colores
+function colorEstado(e){
+if(e==="disponible") return "green";
+if(e==="en_ruta"||e==="ocupada") return "orange";
+if(e==="inhabilitado") return "red";
+return "black";
+}
 
-// usuarios
-const mu_user=document.getElementById("mu_user");
-const mu_pass=document.getElementById("mu_pass");
-const mu_rol=document.getElementById("mu_rol");
+// select fix
+function actualizarSelect(select, lista, key, label){
+let v = select.value;
+select.innerHTML = `<option value="">--</option>` + lista.map(i=>`<option value="${i[key]}">${i[label]}</option>`).join("");
+if(v) select.value=v;
+}
 
-const modal=document.getElementById("modalUsuarios");
-const listaUsuarios=document.getElementById("listaUsuarios");
-
-socket.on("actualizar",()=>cargar());
-
+// cargar
 function cargar(){
+
 fetch("/datos").then(r=>r.json()).then(d=>{
 
 cd.innerText=d.stats.conductores_disponibles;
@@ -188,153 +249,95 @@ ud.innerText=d.stats.unidades_disponibles;
 uo.innerText=d.stats.unidades_ocupadas;
 ui.innerText=d.stats.unidades_inhabilitadas;
 
-// asignaciones
-asignaciones.innerHTML =
-d.asignaciones.map(a=>`<li>${a.conductor} → ${a.unidad}</li>`).join("");
-
-// conductores
 conductores.innerHTML=d.conductores.map(c=>`
-<li>${c.nombre} - ${c.estado}
-<button onclick="editarConductor(${c.id})">✏️</button>
-<button onclick="eliminarConductor(${c.id})">🗑️</button>
-</li>`).join("");
+<li>${c.nombre} - <span style="color:${colorEstado(c.estado)}">${c.estado}</span></li>`).join("");
 
-// unidades
 unidades.innerHTML=d.unidades.map(u=>`
-<li>${u.placa} - ${u.estado}
-<button onclick="editarUnidad(${u.id})">✏️</button>
-<button onclick="eliminarUnidad(${u.id})">🗑️</button>
-</li>`).join("");
+<li>${u.placa} - <span style="color:${colorEstado(u.estado)}">${u.estado}</span></li>`).join("");
 
-// selects
-conductorSelect.innerHTML=d.conductores.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join("");
-unidadSelect.innerHTML=d.unidades.map(u=>`<option value="${u.id}">${u.placa}</option>`).join("");
+asignaciones.innerHTML = d.asignaciones.length
+? d.asignaciones.map(a=>`<li>👷 ${a.conductor} → 🚛 ${a.unidad}</li>`).join("")
+: "<li>No hay asignaciones activas</li>";
 
-conductorFinal.innerHTML=conductorSelect.innerHTML;
-unidadFinal.innerHTML=unidadSelect.innerHTML;
-unidadInh.innerHTML=unidadSelect.innerHTML;
-
-unidadHab.innerHTML=d.unidades.filter(u=>u.estado==="inhabilitado")
-.map(u=>`<option value="${u.id}">${u.placa}</option>`).join("");
+actualizarSelect(conductorSelect,d.conductores,"id","nombre");
+actualizarSelect(unidadSelect,d.unidades,"id","placa");
+actualizarSelect(conductorFinal,d.conductores,"id","nombre");
+actualizarSelect(unidadFinal,d.unidades,"id","placa");
+actualizarSelect(editConductorSelect,d.conductores,"id","nombre");
+actualizarSelect(editUnidadSelect,d.unidades,"id","placa");
 
 });
 
-// historial
-if(ROL==="admin"){
+if(userRol==="admin"){
 fetch("/movimientos").then(r=>r.json()).then(d=>{
-movimientos.innerHTML =
-d.map(m=>`<li>${m.tipo} - ${m.obs || ""}</li>`).join("");
+movimientos.innerHTML = d.map(m=>`
+<li style="margin-bottom:8px;">
+<b>${m.accion}</b><br>
+👤 ${m.usuario}<br>
+🕒 ${m.fecha}
+${m.obs ? `<br>📝 ${m.obs}` : ""}
+</li>
+`).join("");
 });
-}
-}
 
-// ================= CRUD =================
-
-function crearConductor(){
-fetch("/crear_conductor",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({nombre:nombre.value})}).then(()=>cargar());
-}
-
-function editarConductor(id){
-let nuevo=prompt("Nuevo nombre:");
-if(!nuevo) return;
-fetch("/editar_conductor",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({id,nombre:nuevo})}).then(()=>cargar());
-}
-
-function eliminarConductor(id){
-if(confirm("Eliminar?")){
-fetch("/eliminar_conductor",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({id})}).then(()=>cargar());
-}
-}
-
-// UNIDADES
-function crearUnidad(){
-fetch("/crear_unidad",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({placa:placa.value})}).then(()=>cargar());
-}
-
-function editarUnidad(id){
-let nueva=prompt("Nueva placa:");
-if(!nueva) return;
-fetch("/editar_unidad",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({id,placa:nueva})}).then(()=>cargar());
-}
-
-function eliminarUnidad(id){
-if(confirm("Eliminar?")){
-fetch("/eliminar_unidad",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({id})}).then(()=>cargar());
-}
-}
-
-// ================= OPERACIONES =================
-
-function asignar(){
-fetch("/asignar",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({conductor_id:conductorSelect.value,unidad_id:unidadSelect.value})})
-.then(()=>cargar());
-}
-
-function finalizar(){
-fetch("/finalizar",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({conductor_id:conductorFinal.value,unidad_id:unidadFinal.value})})
-.then(()=>cargar());
-}
-
-function inhabilitar(){
-fetch("/inhabilitar",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({unidad_id:unidadInh.value,observacion:obsInh.value})})
-.then(()=>cargar());
-}
-
-function habilitar(){
-fetch("/habilitar",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({unidad_id:unidadHab.value})})
-.then(()=>cargar());
-}
-
-// ================= USUARIOS =================
-
-function abrirModal(){modal.style.display="flex";cargarUsuarios();}
-function cerrarModal(){modal.style.display="none";}
-
-function cargarUsuarios(){
 fetch("/usuarios").then(r=>r.json()).then(d=>{
 listaUsuarios.innerHTML=d.map(u=>`
 <li>${u.username} (${u.rol})
-<button onclick="editarUsuario(${u.id})">✏️</button>
-<button onclick="eliminarUsuario(${u.id})">🗑️</button>
+<button onclick="editarUsuario(${u.id},'${u.username}','${u.rol}')">Seleccionar</button>
 </li>`).join("");
 });
 }
 
+}
+
+// CRUD
+function crearConductor(){ api("/crear_conductor",{nombre:nombre.value}).then(()=>{limpiarTodo();cargar();}); }
+function crearUnidad(){ api("/crear_unidad",{placa:placa.value}).then(()=>{limpiarTodo();cargar();}); }
+
+function editarConductor(){ api("/editar_conductor",{id:editConductorSelect.value,nombre:editConductorNombre.value}).then(()=>{limpiarTodo();cargar();}); }
+function eliminarConductor(){ api("/eliminar_conductor",{id:editConductorSelect.value}).then(()=>{limpiarTodo();cargar();}); }
+
+function editarUnidad(){ api("/editar_unidad",{id:editUnidadSelect.value,placa:editUnidadPlaca.value}).then(()=>{limpiarTodo();cargar();}); }
+function eliminarUnidad(){ api("/eliminar_unidad",{id:editUnidadSelect.value}).then(()=>{limpiarTodo();cargar();}); }
+
+function asignar(){ api("/asignar",{conductor_id:conductorSelect.value,unidad_id:unidadSelect.value}).then(()=>{limpiarTodo();cargar();}); }
+function finalizar(){ api("/finalizar",{conductor_id:conductorFinal.value||null,unidad_id:unidadFinal.value||null}).then(()=>{limpiarTodo();cargar();}); }
+
+// usuarios
+function editarUsuario(id,u,r){ u_id.value=id;u_user.value=u;u_rol.value=r; }
+function cancelarEdicion(){ limpiarTodo(); }
+
 function crearUsuario(){
-fetch("/crear_usuario",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({username:mu_user.value,password:mu_pass.value,rol:mu_rol.value})})
-.then(()=>cargarUsuarios());
+if(!u_user.value||!u_pass.value) return alert("Datos incompletos");
+api("/crear_usuario",{username:u_user.value,password:u_pass.value,rol:u_rol.value}).then(()=>{limpiarTodo();cargar();});
 }
 
-function editarUsuario(id){
-let username=prompt("Usuario:");
-let password=prompt("Password:");
-let rol=prompt("Rol:");
-fetch("/editar_usuario",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({id,username,password,rol})})
-.then(()=>cargarUsuarios());
+function editarUsuarioGuardar(){
+if(!u_id.value) return alert("Seleccione usuario");
+api("/editar_usuario",{id:u_id.value,username:u_user.value,password:u_pass.value,rol:u_rol.value}).then(()=>{limpiarTodo();cargar();});
 }
 
-function eliminarUsuario(id){
-if(confirm("Eliminar?")){
-fetch("/eliminar_usuario",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({id})})
-.then(()=>cargarUsuarios());
-}
+function eliminarUsuarioSeleccion(){
+if(!u_id.value) return alert("Seleccione usuario");
+if(!confirm("Eliminar?")) return;
+api("/eliminar_usuario",{id:u_id.value}).then(()=>{limpiarTodo();cargar();});
 }
 
-// INIT
+// roles
+if(userRol==="user"){
+document.getElementById("seccion-crear").style.display="none";
+document.getElementById("seccion-editar").style.display="none";
+document.getElementById("seccion-operaciones").style.display="none";
+}
+if(userRol!=="admin"){
+document.getElementById("seccion-usuarios").style.display="none";
+document.getElementById("seccion-historial").style.display="none";
+}
+
+// init
+setInterval(cargar,3000);
 cargar();
+
 </script>
 
 </body>

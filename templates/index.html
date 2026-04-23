@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>ERP Flota PRO</title>
+<title>Sistema de Control</title>
 
 <style>
 body{font-family:'Segoe UI';background:#f4f6fb;margin:0}
@@ -51,13 +51,34 @@ background:#f9fafb;
 padding:10px;
 border-radius:10px;
 }
+
+/* 🔥 HISTORIAL CON SCROLL */
+#seccion-historial .card{
+max-height:320px;
+overflow:auto;
+border:1px solid #e5e7eb;
+}
+
+#movimientos{
+min-width:600px;
+overflow:auto;
+white-space:nowrap;
+}
+
+#movimientos li{
+display:block;
+background:#f3f4f6;
+margin-bottom:8px;
+padding:8px;
+border-radius:8px;
+}
 </style>
 </head>
 
 <body>
 
 <header>
-<div>🚛 ERP Flota PRO</div>
+<div>🚛 Sistema de Control</div>
 <div style="display:flex;gap:10px;align-items:center;">
 <span>{{user.username}} ({{user.rol}})</span>
 <button onclick="logout()" class="btn-red">Cerrar sesión</button>
@@ -79,14 +100,14 @@ const userRol = "{{user.rol}}";
 <div class="box ocupado"><h5>En ruta</h5><p id="co"></p></div>
 </div>
 
-<h4 style="margin-top:15px;">🚛 Unidades</h4>
+<h4>🚛 Unidades</h4>
 <div class="gridDash">
 <div class="box disponible"><h5>Disponibles</h5><p id="ud"></p></div>
 <div class="box ocupado"><h5>Ocupadas</h5><p id="uo"></p></div>
 <div class="box inhabilitado"><h5>Inhabilitadas</h5><p id="ui"></p></div>
 </div>
 
-<h4 style="margin-top:15px;">🔗 Asignaciones activas</h4>
+<h4>🔗 Asignaciones</h4>
 <div class="asignaciones">
 <ul id="asignaciones"></ul>
 </div>
@@ -142,6 +163,7 @@ const userRol = "{{user.rol}}";
 
 <!-- OPERACIONES -->
 <div class="container" id="seccion-operaciones">
+
 <div class="card">
 <h3>Asignar</h3>
 <select id="conductorSelect"></select>
@@ -155,6 +177,24 @@ const userRol = "{{user.rol}}";
 <select id="unidadFinal"></select>
 <button onclick="finalizar()" class="btn-gray">Finalizar</button>
 </div>
+
+<!-- ⭐ NUEVO BLOQUE -->
+<div class="card">
+<h3>Estado de Unidades</h3>
+
+<select id="unidadEstado"></select>
+
+<select id="estadoUnidad">
+<option value="">-- Estado --</option>
+<option value="disponible">Habilitar</option>
+<option value="inhabilitado">Inhabilitar</option>
+</select>
+
+<input id="obsEstado" placeholder="Observación (opcional)">
+
+<button onclick="cambiarEstadoUnidad()" class="btn-blue">Aplicar</button>
+</div>
+
 </div>
 
 <!-- HISTORIAL -->
@@ -191,54 +231,30 @@ const userRol = "{{user.rol}}";
 
 <script>
 
-// API
 function api(url,data={}){
 return fetch(url,{
 method:"POST",
 headers:{"Content-Type":"application/json"},
 body:JSON.stringify(data)
-}).then(r=>{
-if(!r.ok) throw "Error servidor";
-return r;
-}).catch(e=>alert(e));
+}).then(r=>r.json());
 }
 
 function logout(){ location.href="/logout"; }
 
-// limpiar
 function limpiarTodo(){
-nombre.value="";
-placa.value="";
-editConductorSelect.value="";
-editConductorNombre.value="";
-editUnidadSelect.value="";
-editUnidadPlaca.value="";
-conductorSelect.value="";
-unidadSelect.value="";
-conductorFinal.value="";
-unidadFinal.value="";
-u_id.value="";
-u_user.value="";
-u_pass.value="";
-u_rol.value="user";
+document.querySelectorAll("input").forEach(i=>i.value="");
+document.querySelectorAll("select").forEach(s=>s.value="");
 }
 
-// colores
-function colorEstado(e){
-if(e==="disponible") return "green";
-if(e==="en_ruta"||e==="ocupada") return "orange";
-if(e==="inhabilitado") return "red";
-return "black";
+// ⭐ NUEVO: estado unidad
+function cambiarEstadoUnidad(){
+api("/cambiar_estado_unidad",{
+unidad_id: unidadEstado.value,
+estado: estadoUnidad.value,
+observacion: obsEstado.value
+}).then(()=>{ limpiarTodo(); cargar(); });
 }
 
-// select fix
-function actualizarSelect(select, lista, key, label){
-let v = select.value;
-select.innerHTML = `<option value="">--</option>` + lista.map(i=>`<option value="${i[key]}">${i[label]}</option>`).join("");
-if(v) select.value=v;
-}
-
-// cargar
 function cargar(){
 
 fetch("/datos").then(r=>r.json()).then(d=>{
@@ -250,91 +266,30 @@ uo.innerText=d.stats.unidades_ocupadas;
 ui.innerText=d.stats.unidades_inhabilitadas;
 
 conductores.innerHTML=d.conductores.map(c=>`
-<li>${c.nombre} - <span style="color:${colorEstado(c.estado)}">${c.estado}</span></li>`).join("");
+<li>${c.nombre} - ${c.estado}</li>`).join("");
 
 unidades.innerHTML=d.unidades.map(u=>`
-<li>${u.placa} - <span style="color:${colorEstado(u.estado)}">${u.estado}</span></li>`).join("");
+<li>${u.placa} - ${u.estado}</li>`).join("");
 
-asignaciones.innerHTML = d.asignaciones.length
-? d.asignaciones.map(a=>`<li>👷 ${a.conductor} → 🚛 ${a.unidad}</li>`).join("")
-: "<li>No hay asignaciones activas</li>";
+asignaciones.innerHTML=d.asignaciones.map(a=>
+`<li>${a.conductor} → ${a.unidad}</li>`).join("");
 
-actualizarSelect(conductorSelect,d.conductores,"id","nombre");
-actualizarSelect(unidadSelect,d.unidades,"id","placa");
-actualizarSelect(conductorFinal,d.conductores,"id","nombre");
-actualizarSelect(unidadFinal,d.unidades,"id","placa");
-actualizarSelect(editConductorSelect,d.conductores,"id","nombre");
-actualizarSelect(editUnidadSelect,d.unidades,"id","placa");
+function fill(sel,list,k,l){
+sel.innerHTML=list.map(i=>`<option value="${i[k]}">${i[l]}</option>`).join("");
+}
+
+fill(conductorSelect,d.conductores,"id","nombre");
+fill(unidadSelect,d.unidades,"id","placa");
+fill(conductorFinal,d.conductores,"id","nombre");
+fill(unidadFinal,d.unidades,"id","placa");
+fill(editConductorSelect,d.conductores,"id","nombre");
+fill(editUnidadSelect,d.unidades,"id","placa");
+fill(unidadEstado,d.unidades,"id","placa");
 
 });
 
-if(userRol==="admin"){
-fetch("/movimientos").then(r=>r.json()).then(d=>{
-movimientos.innerHTML = d.map(m=>`
-<li style="margin-bottom:8px;">
-<b>${m.accion}</b><br>
-👤 ${m.usuario}<br>
-🕒 ${m.fecha}
-${m.obs ? `<br>📝 ${m.obs}` : ""}
-</li>
-`).join("");
-});
-
-fetch("/usuarios").then(r=>r.json()).then(d=>{
-listaUsuarios.innerHTML=d.map(u=>`
-<li>${u.username} (${u.rol})
-<button onclick="editarUsuario(${u.id},'${u.username}','${u.rol}')">Seleccionar</button>
-</li>`).join("");
-});
 }
 
-}
-
-// CRUD
-function crearConductor(){ api("/crear_conductor",{nombre:nombre.value}).then(()=>{limpiarTodo();cargar();}); }
-function crearUnidad(){ api("/crear_unidad",{placa:placa.value}).then(()=>{limpiarTodo();cargar();}); }
-
-function editarConductor(){ api("/editar_conductor",{id:editConductorSelect.value,nombre:editConductorNombre.value}).then(()=>{limpiarTodo();cargar();}); }
-function eliminarConductor(){ api("/eliminar_conductor",{id:editConductorSelect.value}).then(()=>{limpiarTodo();cargar();}); }
-
-function editarUnidad(){ api("/editar_unidad",{id:editUnidadSelect.value,placa:editUnidadPlaca.value}).then(()=>{limpiarTodo();cargar();}); }
-function eliminarUnidad(){ api("/eliminar_unidad",{id:editUnidadSelect.value}).then(()=>{limpiarTodo();cargar();}); }
-
-function asignar(){ api("/asignar",{conductor_id:conductorSelect.value,unidad_id:unidadSelect.value}).then(()=>{limpiarTodo();cargar();}); }
-function finalizar(){ api("/finalizar",{conductor_id:conductorFinal.value||null,unidad_id:unidadFinal.value||null}).then(()=>{limpiarTodo();cargar();}); }
-
-// usuarios
-function editarUsuario(id,u,r){ u_id.value=id;u_user.value=u;u_rol.value=r; }
-function cancelarEdicion(){ limpiarTodo(); }
-
-function crearUsuario(){
-if(!u_user.value||!u_pass.value) return alert("Datos incompletos");
-api("/crear_usuario",{username:u_user.value,password:u_pass.value,rol:u_rol.value}).then(()=>{limpiarTodo();cargar();});
-}
-
-function editarUsuarioGuardar(){
-if(!u_id.value) return alert("Seleccione usuario");
-api("/editar_usuario",{id:u_id.value,username:u_user.value,password:u_pass.value,rol:u_rol.value}).then(()=>{limpiarTodo();cargar();});
-}
-
-function eliminarUsuarioSeleccion(){
-if(!u_id.value) return alert("Seleccione usuario");
-if(!confirm("Eliminar?")) return;
-api("/eliminar_usuario",{id:u_id.value}).then(()=>{limpiarTodo();cargar();});
-}
-
-// roles
-if(userRol==="user"){
-document.getElementById("seccion-crear").style.display="none";
-document.getElementById("seccion-editar").style.display="none";
-document.getElementById("seccion-operaciones").style.display="none";
-}
-if(userRol!=="admin"){
-document.getElementById("seccion-usuarios").style.display="none";
-document.getElementById("seccion-historial").style.display="none";
-}
-
-// init
 setInterval(cargar,3000);
 cargar();
 
