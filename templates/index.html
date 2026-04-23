@@ -168,8 +168,10 @@ const userRol = "{{user.rol}}";
 <option value="user">user</option>
 </select>
 
-<button id="btnGuardarUsuario" onclick="guardarUsuario()" class="btn-green">Crear</button>
-<button onclick="cancelarEdicion()" class="btn-gray">Cancelar</button>
+<button onclick="crearUsuario()" class="btn-green">Crear</button>
+<button onclick="editarUsuarioGuardar()" class="btn-blue">Editar</button>
+<button onclick="eliminarUsuarioSeleccion()" class="btn-red">Eliminar</button>
+<button onclick="cancelarEdicion()" class="btn-gray">Limpiar</button>
 
 <ul id="listaUsuarios"></ul>
 </div>
@@ -232,7 +234,6 @@ actualizarSelect(editUnidadSelect,d.unidades,"id","placa");
 
 });
 
-// historial + usuarios
 if(userRol==="admin"){
 fetch("/movimientos").then(r=>r.json()).then(d=>{
 movimientos.innerHTML=d.map(m=>`
@@ -243,15 +244,15 @@ fetch("/usuarios").then(r=>r.json()).then(d=>{
 listaUsuarios.innerHTML=d.map(u=>`
 <li>
 ${u.username} (${u.rol})
-<button onclick="editarUsuario(${u.id},'${u.username}','${u.rol}')">✏️</button>
-<button onclick="eliminarUsuario(${u.id})">❌</button>
-</li>`).join("");
+<button onclick="editarUsuario(${u.id},'${u.username}','${u.rol}')">Seleccionar</button>
+</li>
+`).join("");
 });
 }
 
 }
 
-// CRUD
+// CRUD normal
 function crearConductor(){ if(!nombre.value) return alert("Nombre"); api("/crear_conductor",{nombre:nombre.value}).then(cargar);}
 function crearUnidad(){ if(!placa.value) return alert("Placa"); api("/crear_unidad",{placa:placa.value}).then(cargar);}
 
@@ -264,26 +265,29 @@ function eliminarUnidad(){ api("/eliminar_unidad",{id:editUnidadSelect.value}).t
 function asignar(){ api("/asignar",{conductor_id:conductorSelect.value,unidad_id:unidadSelect.value}).then(cargar);}
 function finalizar(){ api("/finalizar",{conductor_id:conductorFinal.value||null,unidad_id:unidadFinal.value||null}).then(cargar);}
 
-// usuarios
+// USUARIOS
 function editarUsuario(id,u,r){
 u_id.value=id;u_user.value=u;u_rol.value=r;
-document.getElementById("btnGuardarUsuario").innerText="Actualizar";
 }
 
 function cancelarEdicion(){
 u_id.value="";u_user.value="";u_pass.value="";
-document.getElementById("btnGuardarUsuario").innerText="Crear";
 }
 
-function guardarUsuario(){
-api(u_id.value?"/editar_usuario":"/crear_usuario",{
-id:u_id.value,username:u_user.value,password:u_pass.value,rol:u_rol.value
-}).then(()=>{cancelarEdicion();cargar();});
+function crearUsuario(){
+if(!u_user.value||!u_pass.value) return alert("Datos incompletos");
+api("/crear_usuario",{username:u_user.value,password:u_pass.value,rol:u_rol.value}).then(()=>{cancelarEdicion();cargar();});
 }
 
-function eliminarUsuario(id){
+function editarUsuarioGuardar(){
+if(!u_id.value) return alert("Seleccione usuario");
+api("/editar_usuario",{id:u_id.value,username:u_user.value,password:u_pass.value,rol:u_rol.value}).then(()=>{cancelarEdicion();cargar();});
+}
+
+function eliminarUsuarioSeleccion(){
+if(!u_id.value) return alert("Seleccione usuario");
 if(!confirm("Eliminar?")) return;
-api("/eliminar_usuario",{id}).then(cargar);
+api("/eliminar_usuario",{id:u_id.value}).then(()=>{cancelarEdicion();cargar();});
 }
 
 // roles

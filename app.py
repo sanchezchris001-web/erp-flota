@@ -101,7 +101,6 @@ def datos():
     return jsonify({
         "conductores":[{"id":c.id,"nombre":c.nombre,"estado":c.estado} for c in conductores],
         "unidades":[{"id":u.id,"placa":u.placa,"estado":u.estado} for u in unidades],
-        "asignaciones": [],
         "stats":{
             "conductores_disponibles": len([c for c in conductores if c.estado=="disponible"]),
             "conductores_ocupados": len([c for c in conductores if c.estado=="en_ruta"]),
@@ -129,6 +128,84 @@ def movimientos():
         }
         for m in data
     ])
+
+# ================= USUARIOS =================
+
+@app.route("/usuarios")
+def listar_usuarios():
+    if not is_admin():
+        return "", 403
+
+    usuarios = Usuario.query.all()
+
+    return jsonify([
+        {"id":u.id,"username":u.username,"rol":u.rol}
+        for u in usuarios
+    ])
+
+@app.route("/crear_usuario", methods=["POST"])
+def crear_usuario():
+    if not is_admin():
+        return "", 403
+
+    d = request.json
+
+    if not d.get("username") or not d.get("password"):
+        return "Datos incompletos", 400
+
+    if Usuario.query.filter_by(username=d["username"]).first():
+        return "Usuario ya existe", 400
+
+    nuevo = Usuario(
+        username=d["username"],
+        password=d["password"],
+        rol=d.get("rol","user")
+    )
+
+    db.session.add(nuevo)
+    registrar_movimiento("Crear usuario", d["username"])
+    db.session.commit()
+    return "", 200
+
+@app.route("/editar_usuario", methods=["POST"])
+def editar_usuario():
+    if not is_admin():
+        return "", 403
+
+    d = request.json
+    u = Usuario.query.get(d.get("id"))
+
+    if not u:
+        return "No encontrado", 404
+
+    u.username = d.get("username", u.username)
+    u.rol = d.get("rol", u.rol)
+
+    if d.get("password"):
+        u.password = d["password"]
+
+    registrar_movimiento("Editar usuario", u.username)
+    db.session.commit()
+    return "", 200
+
+@app.route("/eliminar_usuario", methods=["POST"])
+def eliminar_usuario():
+    if not is_admin():
+        return "", 403
+
+    d = request.json
+    u = Usuario.query.get(d.get("id"))
+
+    if not u:
+        return "No encontrado", 404
+
+    if u.id == session.get("user_id"):
+        return "No puedes eliminarte", 400
+
+    registrar_movimiento("Eliminar usuario", u.username)
+    db.session.delete(u)
+    db.session.commit()
+    return "", 200
 
 # ================= CRUD =================
 
@@ -222,13 +299,11 @@ def finalizar():
 
     if request.json.get("conductor_id"):
         c = Conductor.query.get(request.json["conductor_id"])
-        if c:
-            c.estado = "disponible"
+        if c: c.estado = "disponible"
 
     if request.json.get("unidad_id"):
         u = Unidad.query.get(request.json["unidad_id"])
-        if u:
-            u.estado = "disponible"
+        if u: u.estado = "disponible"
 
     registrar_movimiento("Finalizar operación")
     db.session.commit()
