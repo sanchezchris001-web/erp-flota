@@ -157,6 +157,24 @@ const userRol = "{{user.rol}}";
 </div>
 </div>
 
+<!-- NUEVO: INHABILITAR -->
+<div class="container">
+<div class="card">
+<h3>Inhabilitar / Habilitar Unidad</h3>
+
+<select id="unidadEstado"></select>
+
+<select id="estadoUnidad">
+<option value="disponible">Habilitar</option>
+<option value="inhabilitado">Inhabilitar</option>
+</select>
+
+<input id="obsUnidad" placeholder="Observación">
+
+<button onclick="cambiarEstadoUnidad()" class="btn-red">Aplicar</button>
+</div>
+</div>
+
 <!-- HISTORIAL -->
 <div class="container" id="seccion-historial">
 <div class="card">
@@ -209,18 +227,7 @@ function logout(){ location.href="/logout"; }
 function limpiarTodo(){
 nombre.value="";
 placa.value="";
-editConductorSelect.value="";
-editConductorNombre.value="";
-editUnidadSelect.value="";
-editUnidadPlaca.value="";
-conductorSelect.value="";
-unidadSelect.value="";
-conductorFinal.value="";
-unidadFinal.value="";
-u_id.value="";
-u_user.value="";
-u_pass.value="";
-u_rol.value="user";
+obsUnidad.value="";
 }
 
 // colores
@@ -231,7 +238,7 @@ if(e==="inhabilitado") return "red";
 return "black";
 }
 
-// select fix
+// select
 function actualizarSelect(select, lista, key, label){
 let v = select.value;
 select.innerHTML = `<option value="">--</option>` + lista.map(i=>`<option value="${i[key]}">${i[label]}</option>`).join("");
@@ -265,13 +272,14 @@ actualizarSelect(conductorFinal,d.conductores,"id","nombre");
 actualizarSelect(unidadFinal,d.unidades,"id","placa");
 actualizarSelect(editConductorSelect,d.conductores,"id","nombre");
 actualizarSelect(editUnidadSelect,d.unidades,"id","placa");
+actualizarSelect(unidadEstado,d.unidades,"id","placa");
 
 });
 
 if(userRol==="admin"){
 fetch("/movimientos").then(r=>r.json()).then(d=>{
 movimientos.innerHTML = d.map(m=>`
-<li style="margin-bottom:8px;">
+<li>
 <b>${m.accion}</b><br>
 👤 ${m.usuario}<br>
 🕒 ${m.fecha}
@@ -279,59 +287,23 @@ ${m.obs ? `<br>📝 ${m.obs}` : ""}
 </li>
 `).join("");
 });
-
-fetch("/usuarios").then(r=>r.json()).then(d=>{
-listaUsuarios.innerHTML=d.map(u=>`
-<li>${u.username} (${u.rol})
-<button onclick="editarUsuario(${u.id},'${u.username}','${u.rol}')">Seleccionar</button>
-</li>`).join("");
-});
 }
 
 }
 
-// CRUD
+// acciones
 function crearConductor(){ api("/crear_conductor",{nombre:nombre.value}).then(()=>{limpiarTodo();cargar();}); }
 function crearUnidad(){ api("/crear_unidad",{placa:placa.value}).then(()=>{limpiarTodo();cargar();}); }
 
-function editarConductor(){ api("/editar_conductor",{id:editConductorSelect.value,nombre:editConductorNombre.value}).then(()=>{limpiarTodo();cargar();}); }
-function eliminarConductor(){ api("/eliminar_conductor",{id:editConductorSelect.value}).then(()=>{limpiarTodo();cargar();}); }
+function asignar(){ api("/asignar",{conductor_id:conductorSelect.value,unidad_id:unidadSelect.value}).then(()=>cargar()); }
+function finalizar(){ api("/finalizar",{conductor_id:conductorFinal.value,unidad_id:unidadFinal.value}).then(()=>cargar()); }
 
-function editarUnidad(){ api("/editar_unidad",{id:editUnidadSelect.value,placa:editUnidadPlaca.value}).then(()=>{limpiarTodo();cargar();}); }
-function eliminarUnidad(){ api("/eliminar_unidad",{id:editUnidadSelect.value}).then(()=>{limpiarTodo();cargar();}); }
-
-function asignar(){ api("/asignar",{conductor_id:conductorSelect.value,unidad_id:unidadSelect.value}).then(()=>{limpiarTodo();cargar();}); }
-function finalizar(){ api("/finalizar",{conductor_id:conductorFinal.value||null,unidad_id:unidadFinal.value||null}).then(()=>{limpiarTodo();cargar();}); }
-
-// usuarios
-function editarUsuario(id,u,r){ u_id.value=id;u_user.value=u;u_rol.value=r; }
-function cancelarEdicion(){ limpiarTodo(); }
-
-function crearUsuario(){
-if(!u_user.value||!u_pass.value) return alert("Datos incompletos");
-api("/crear_usuario",{username:u_user.value,password:u_pass.value,rol:u_rol.value}).then(()=>{limpiarTodo();cargar();});
-}
-
-function editarUsuarioGuardar(){
-if(!u_id.value) return alert("Seleccione usuario");
-api("/editar_usuario",{id:u_id.value,username:u_user.value,password:u_pass.value,rol:u_rol.value}).then(()=>{limpiarTodo();cargar();});
-}
-
-function eliminarUsuarioSeleccion(){
-if(!u_id.value) return alert("Seleccione usuario");
-if(!confirm("Eliminar?")) return;
-api("/eliminar_usuario",{id:u_id.value}).then(()=>{limpiarTodo();cargar();});
-}
-
-// roles
-if(userRol==="user"){
-document.getElementById("seccion-crear").style.display="none";
-document.getElementById("seccion-editar").style.display="none";
-document.getElementById("seccion-operaciones").style.display="none";
-}
-if(userRol!=="admin"){
-document.getElementById("seccion-usuarios").style.display="none";
-document.getElementById("seccion-historial").style.display="none";
+function cambiarEstadoUnidad(){
+api("/cambiar_estado_unidad",{
+unidad_id: unidadEstado.value,
+estado: estadoUnidad.value,
+observacion: obsUnidad.value
+}).then(()=>{limpiarTodo();cargar();});
 }
 
 // init
