@@ -72,6 +72,8 @@ const userRol = "{{user.rol}}";
 <div class="card">
 <h3>📊 Dashboard</h3>
 
+<div id="alertas"></div>
+
 <h4>👷 Conductores</h4>
 <div class="gridDash">
 <div class="box disponible"><h5>Disponibles</h5><p id="cd"></p></div>
@@ -157,7 +159,7 @@ const userRol = "{{user.rol}}";
 </div>
 
 <!-- INHABILITAR -->
-<div class="container">
+<div class="container" id="bloque-inhabilitar">
 <div class="card">
 <h3>Inhabilitar / Habilitar Unidad</h3>
 
@@ -178,6 +180,12 @@ const userRol = "{{user.rol}}";
 <div class="container" id="seccion-historial">
 <div class="card">
 <h3>Historial</h3>
+
+<input type="date" id="filtroFecha">
+<input placeholder="Usuario" id="filtroUsuario">
+<button onclick="filtrarHistorial()" class="btn-blue">Filtrar</button>
+<button onclick="exportarExcel()" class="btn-green">Exportar Excel</button>
+
 <ul id="movimientos"></ul>
 </div>
 </div>
@@ -273,13 +281,22 @@ actualizarSelect(editConductorSelect,d.conductores,"id","nombre");
 actualizarSelect(editUnidadSelect,d.unidades,"id","placa");
 actualizarSelect(unidadEstado,d.unidades,"id","placa");
 
+// ALERTAS
+let alertasHTML="";
+if(d.stats.unidades_inhabilitadas>0){
+alertasHTML+=`<div style="background:#fee2e2;padding:10px;border-radius:8px;margin-bottom:10px;">
+🚨 ${d.stats.unidades_inhabilitadas} unidades inhabilitadas
+</div>`;
+}
+document.getElementById("alertas").innerHTML=alertasHTML;
+
 });
 
 if(userRol==="admin"){
 
 fetch("/movimientos").then(r=>r.json()).then(d=>{
 movimientos.innerHTML = d.map(m=>`
-<li style="margin-bottom:8px;">
+<li>
 <b>${m.accion}</b><br>
 👤 ${m.usuario}<br>
 🕒 ${m.fecha}
@@ -340,11 +357,37 @@ if(!confirm("Eliminar?")) return;
 api("/eliminar_usuario",{id:u_id.value}).then(()=>{cancelarEdicion();cargar();});
 }
 
+// filtros
+function filtrarHistorial(){
+let fecha=filtroFecha.value;
+let usuario=filtroUsuario.value.toLowerCase();
+
+fetch("/movimientos").then(r=>r.json()).then(d=>{
+let f=d.filter(m=>
+(!fecha||m.fecha.includes(fecha)) &&
+(!usuario||m.usuario.toLowerCase().includes(usuario))
+);
+
+movimientos.innerHTML=f.map(m=>`
+<li>
+<b>${m.accion}</b><br>
+👤 ${m.usuario}<br>
+🕒 ${m.fecha}
+${m.obs?`<br>📝 ${m.obs}`:""}
+</li>`).join("");
+});
+}
+
+function exportarExcel(){
+window.location.href="/exportar_excel";
+}
+
 // roles
 if(userRol==="user"){
 document.getElementById("seccion-crear").style.display="none";
 document.getElementById("seccion-editar").style.display="none";
 document.getElementById("seccion-operaciones").style.display="none";
+document.getElementById("bloque-inhabilitar").style.display="none";
 }
 if(userRol!=="admin"){
 document.getElementById("seccion-usuarios").style.display="none";
