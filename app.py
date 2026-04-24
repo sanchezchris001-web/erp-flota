@@ -144,7 +144,7 @@ def crear_conductor():
     conn=get_db();cur=conn.cursor()
     cur.execute("INSERT INTO conductores(nombre,estado) VALUES(%s,'disponible')",(d["nombre"],))
     conn.commit();conn.close()
-    registrar_movimiento(f"Creó conductor {d['nombre']}")
+    registrar_movimiento(f"Creó conductor: {d['nombre']}")
     return jsonify({"ok":True})
 
 @app.route("/crear_unidad",methods=["POST"])
@@ -153,7 +153,7 @@ def crear_unidad():
     conn=get_db();cur=conn.cursor()
     cur.execute("INSERT INTO unidades(placa,estado) VALUES(%s,'disponible')",(d["placa"],))
     conn.commit();conn.close()
-    registrar_movimiento(f"Creó unidad {d['placa']}")
+    registrar_movimiento(f"Creó unidad: {d['placa']}")
     return jsonify({"ok":True})
 
 @app.route("/editar_conductor",methods=["POST"])
@@ -162,7 +162,7 @@ def editar_conductor():
     conn=get_db();cur=conn.cursor()
     cur.execute("UPDATE conductores SET nombre=%s WHERE id=%s",(d["nombre"],d["id"]))
     conn.commit();conn.close()
-    registrar_movimiento("Editó conductor")
+    registrar_movimiento(f"Editó conductor ID {d['id']} → {d['nombre']}")
     return jsonify({"ok":True})
 
 @app.route("/eliminar_conductor",methods=["POST"])
@@ -171,7 +171,7 @@ def eliminar_conductor():
     conn=get_db();cur=conn.cursor()
     cur.execute("DELETE FROM conductores WHERE id=%s",(d["id"],))
     conn.commit();conn.close()
-    registrar_movimiento("Eliminó conductor")
+    registrar_movimiento(f"Eliminó conductor ID {d['id']}")
     return jsonify({"ok":True})
 
 @app.route("/editar_unidad",methods=["POST"])
@@ -180,7 +180,7 @@ def editar_unidad():
     conn=get_db();cur=conn.cursor()
     cur.execute("UPDATE unidades SET placa=%s WHERE id=%s",(d["placa"],d["id"]))
     conn.commit();conn.close()
-    registrar_movimiento("Editó unidad")
+    registrar_movimiento(f"Editó unidad ID {d['id']} → {d['placa']}")
     return jsonify({"ok":True})
 
 @app.route("/eliminar_unidad",methods=["POST"])
@@ -189,7 +189,7 @@ def eliminar_unidad():
     conn=get_db();cur=conn.cursor()
     cur.execute("DELETE FROM unidades WHERE id=%s",(d["id"],))
     conn.commit();conn.close()
-    registrar_movimiento("Eliminó unidad")
+    registrar_movimiento(f"Eliminó unidad ID {d['id']}")
     return jsonify({"ok":True})
 
 # ================= OPERACIONES =================
@@ -205,7 +205,7 @@ def asignar():
     cur.execute("UPDATE unidades SET estado='ocupada' WHERE id=%s",(d["unidad_id"],))
 
     conn.commit();conn.close()
-    registrar_movimiento("Asignó unidad")
+    registrar_movimiento(f"Asignó conductor {d['conductor_id']} a unidad {d['unidad_id']}")
     return jsonify({"ok":True})
 
 @app.route("/finalizar",methods=["POST"])
@@ -222,7 +222,7 @@ def finalizar():
         cur.execute("UPDATE unidades SET estado='disponible' WHERE id=%s",(d["unidad_id"],))
 
     conn.commit();conn.close()
-    registrar_movimiento("Finalizó asignación")
+    registrar_movimiento(f"Finalizó asignación C:{d['conductor_id']} U:{d['unidad_id']}")
     return jsonify({"ok":True})
 
 # ================= INHABILITAR =================
@@ -241,8 +241,10 @@ def cambiar_estado_unidad():
     conn.commit()
     conn.close()
 
+    estado = "INHABILITADA" if d["estado"]=="inhabilitado" else "HABILITADA"
+
     registrar_movimiento(
-        f"Unidad {d['estado']}",
+        f"Unidad {d['unidad_id']} fue {estado}",
         d.get("observacion","")
     )
 
@@ -278,7 +280,7 @@ def crear_usuario():
     cur.execute("INSERT INTO usuarios(username,password,rol) VALUES(%s,%s,%s)",
                 (d["username"],d["password"],d["rol"]))
     conn.commit();conn.close()
-    registrar_movimiento(f"Creó usuario {d['username']}")
+    registrar_movimiento(f"Creó usuario: {d['username']}")
     return jsonify({"ok":True})
 
 @app.route("/editar_usuario",methods=["POST"])
@@ -288,7 +290,7 @@ def editar_usuario():
     cur.execute("UPDATE usuarios SET username=%s,password=%s,rol=%s WHERE id=%s",
                 (d["username"],d["password"],d["rol"],d["id"]))
     conn.commit();conn.close()
-    registrar_movimiento(f"Editó usuario {d['username']}")
+    registrar_movimiento(f"Editó usuario: {d['username']}")
     return jsonify({"ok":True})
 
 @app.route("/eliminar_usuario",methods=["POST"])
@@ -297,5 +299,5 @@ def eliminar_usuario():
     conn=get_db();cur=conn.cursor()
     cur.execute("DELETE FROM usuarios WHERE id=%s",(d["id"],))
     conn.commit();conn.close()
-    registrar_movimiento("Eliminó usuario")
+    registrar_movimiento(f"Eliminó usuario ID {d['id']}")
     return jsonify({"ok":True})
