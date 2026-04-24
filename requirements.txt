@@ -4,3 +4,4 @@ Flask-SocketIO
 eventlet
 gunicorn
 psycopg2-binary
+openpyxl
