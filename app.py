@@ -6,102 +6,80 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = "secret123"
 
-# ================= CONEXIÓN =================
+# ================= DB =================
 def get_db():
     return psycopg2.connect(
         os.environ.get("DATABASE_URL"),
         sslmode="require"
     )
 
-# ================= INIT DB =================
+# ================= INIT =================
 def init_db():
     conn = get_db()
     cur = conn.cursor()
 
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS conductores(
-        id SERIAL PRIMARY KEY,
-        nombre TEXT,
-        estado TEXT
-    )
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS unidades(
-        id SERIAL PRIMARY KEY,
-        placa TEXT,
-        estado TEXT
-    )
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS asignaciones(
-        id SERIAL PRIMARY KEY,
-        conductor_id INTEGER,
-        unidad_id INTEGER
-    )
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS movimientos(
-        id SERIAL PRIMARY KEY,
-        accion TEXT,
-        usuario TEXT,
-        fecha TEXT,
-        obs TEXT
-    )
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS usuarios(
-        id SERIAL PRIMARY KEY,
-        username TEXT,
-        password TEXT,
-        rol TEXT
-    )
-    """)
+    cur.execute("CREATE TABLE IF NOT EXISTS conductores(id SERIAL PRIMARY KEY,nombre TEXT,estado TEXT)")
+    cur.execute("CREATE TABLE IF NOT EXISTS unidades(id SERIAL PRIMARY KEY,placa TEXT,estado TEXT)")
+    cur.execute("CREATE TABLE IF NOT EXISTS asignaciones(id SERIAL PRIMARY KEY,conductor_id INT,unidad_id INT)")
+    cur.execute("CREATE TABLE IF NOT EXISTS movimientos(id SERIAL PRIMARY KEY,accion TEXT,usuario TEXT,fecha TEXT,obs TEXT)")
+    cur.execute("CREATE TABLE IF NOT EXISTS usuarios(id SERIAL PRIMARY KEY,username TEXT UNIQUE,password TEXT,rol TEXT)")
 
     conn.commit()
     conn.close()
 
-# ================= INIT ENDPOINT =================
 @app.route("/init")
 def init():
-    try:
-        init_db()
-        return "Base de datos creada correctamente"
-    except Exception as e:
-        return str(e)
+    init_db()
+    return "BD OK"
 
 # ================= LOGIN =================
-@app.route("/login", methods=["POST"])
+@app.route("/login", methods=["GET","POST"])
 def login():
-    data = request.json
-    conn = get_db()
-    cur = conn.cursor()
+    if request.method == "POST":
+        u = request.form["username"]
+        p = request.form["password"]
 
-    cur.execute(
-        "SELECT * FROM usuarios WHERE username=%s AND password=%s",
-        (data["username"], data["password"])
-    )
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM usuarios WHERE username=%s AND password=%s",(u,p))
+        user = cur.fetchone()
+        conn.close()
 
-    user = cur.fetchone()
-    conn.close()
+        if user:
+            session["user"] = {"username":user[1],"rol":user[3]}
+            return redirect("/")
 
-    if user:
-        session["user"] = user[1]
-        session["rol"] = user[3]
-        return jsonify({"ok": True})
-    return jsonify({"ok": False})
+        return render_template("login.html", error="Credenciales incorrectas")
+
+    return render_template("login.html")
 
 @app.route("/logout")
 def logout():
     session.clear()
-    return redirect("/")
+    return redirect("/login")
+
+@app.route("/crear_admin")
+def crear_admin():
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("INSERT INTO usuarios(username,password,rol) VALUES('admin','123','admin') ON CONFLICT DO NOTHING")
+    conn.commit()
+    conn.close()
+    return "admin listo"
+
+# ================= INDEX =================
+@app.route("/")
+def index():
+    if "user" not in session:
+        return redirect("/login")
+    return render_template("index.html", user=session["user"])
 
 # ================= DATOS =================
 @app.route("/datos")
 def datos():
+    if "user" not in session:
+        return jsonify({"error":"no auth"})
+
     conn = get_db()
     cur = conn.cursor()
 
@@ -112,226 +90,157 @@ def datos():
     unidades = cur.fetchall()
 
     cur.execute("""
-        SELECT c.nombre, u.placa
-        FROM asignaciones a
-        JOIN conductores c ON c.id = a.conductor_id
-        JOIN unidades u ON u.id = a.unidad_id
+    SELECT c.nombre,u.placa
+    FROM asignaciones a
+    JOIN conductores c ON c.id=a.conductor_id
+    JOIN unidades u ON u.id=a.unidad_id
     """)
     asignaciones = cur.fetchall()
 
     stats = {}
-
     cur.execute("SELECT COUNT(*) FROM conductores WHERE estado='disponible'")
-    stats["conductores_disponibles"] = cur.fetchone()[0]
-
+    stats["conductores_disponibles"]=cur.fetchone()[0]
     cur.execute("SELECT COUNT(*) FROM conductores WHERE estado='en_ruta'")
-    stats["conductores_ocupados"] = cur.fetchone()[0]
+    stats["conductores_ocupados"]=cur.fetchone()[0]
 
     cur.execute("SELECT COUNT(*) FROM unidades WHERE estado='disponible'")
-    stats["unidades_disponibles"] = cur.fetchone()[0]
-
+    stats["unidades_disponibles"]=cur.fetchone()[0]
     cur.execute("SELECT COUNT(*) FROM unidades WHERE estado='ocupada'")
-    stats["unidades_ocupadas"] = cur.fetchone()[0]
-
+    stats["unidades_ocupadas"]=cur.fetchone()[0]
     cur.execute("SELECT COUNT(*) FROM unidades WHERE estado='inhabilitado'")
-    stats["unidades_inhabilitadas"] = cur.fetchone()[0]
+    stats["unidades_inhabilitadas"]=cur.fetchone()[0]
 
     conn.close()
 
     return jsonify({
-        "conductores": [{"id": x[0], "nombre": x[1], "estado": x[2]} for x in conductores],
-        "unidades": [{"id": x[0], "placa": x[1], "estado": x[2]} for x in unidades],
-        "asignaciones": [{"conductor": x[0], "unidad": x[1]} for x in asignaciones],
-        "stats": stats
+        "conductores":[{"id":x[0],"nombre":x[1],"estado":x[2]} for x in conductores],
+        "unidades":[{"id":x[0],"placa":x[1],"estado":x[2]} for x in unidades],
+        "asignaciones":[{"conductor":x[0],"unidad":x[1]} for x in asignaciones],
+        "stats":stats
     })
 
-# ================= CREAR =================
-@app.route("/crear_conductor", methods=["POST"])
+# ================= CRUD =================
+@app.route("/crear_conductor",methods=["POST"])
 def crear_conductor():
-    data = request.json
-    conn = get_db()
-    cur = conn.cursor()
+    d=request.json
+    conn=get_db();cur=conn.cursor()
+    cur.execute("INSERT INTO conductores(nombre,estado) VALUES(%s,'disponible')",(d["nombre"],))
+    conn.commit();conn.close()
+    return jsonify({"ok":True})
 
-    cur.execute(
-        "INSERT INTO conductores(nombre, estado) VALUES(%s,'disponible')",
-        (data["nombre"],)
-    )
+@app.route("/editar_conductor",methods=["POST"])
+def editar_conductor():
+    d=request.json
+    conn=get_db();cur=conn.cursor()
+    cur.execute("UPDATE conductores SET nombre=%s WHERE id=%s",(d["nombre"],d["id"]))
+    conn.commit();conn.close()
+    return jsonify({"ok":True})
 
-    conn.commit()
-    conn.close()
-    return jsonify({"ok": True})
+@app.route("/eliminar_conductor",methods=["POST"])
+def eliminar_conductor():
+    d=request.json
+    conn=get_db();cur=conn.cursor()
+    cur.execute("DELETE FROM conductores WHERE id=%s",(d["id"],))
+    conn.commit();conn.close()
+    return jsonify({"ok":True})
 
-@app.route("/crear_unidad", methods=["POST"])
+@app.route("/crear_unidad",methods=["POST"])
 def crear_unidad():
-    data = request.json
-    conn = get_db()
-    cur = conn.cursor()
+    d=request.json
+    conn=get_db();cur=conn.cursor()
+    cur.execute("INSERT INTO unidades(placa,estado) VALUES(%s,'disponible')",(d["placa"],))
+    conn.commit();conn.close()
+    return jsonify({"ok":True})
 
-    cur.execute(
-        "INSERT INTO unidades(placa, estado) VALUES(%s,'disponible')",
-        (data["placa"],)
-    )
+@app.route("/editar_unidad",methods=["POST"])
+def editar_unidad():
+    d=request.json
+    conn=get_db();cur=conn.cursor()
+    cur.execute("UPDATE unidades SET placa=%s WHERE id=%s",(d["placa"],d["id"]))
+    conn.commit();conn.close()
+    return jsonify({"ok":True})
 
-    conn.commit()
-    conn.close()
-    return jsonify({"ok": True})
+@app.route("/eliminar_unidad",methods=["POST"])
+def eliminar_unidad():
+    d=request.json
+    conn=get_db();cur=conn.cursor()
+    cur.execute("DELETE FROM unidades WHERE id=%s",(d["id"],))
+    conn.commit();conn.close()
+    return jsonify({"ok":True})
 
-# ================= ASIGNAR =================
-@app.route("/asignar", methods=["POST"])
+# ================= OPERACIONES =================
+@app.route("/asignar",methods=["POST"])
 def asignar():
-    data = request.json
-    conn = get_db()
-    cur = conn.cursor()
+    d=request.json
+    conn=get_db();cur=conn.cursor()
 
-    cur.execute(
-        "INSERT INTO asignaciones(conductor_id, unidad_id) VALUES(%s,%s)",
-        (data["conductor_id"], data["unidad_id"])
-    )
+    cur.execute("INSERT INTO asignaciones(conductor_id,unidad_id) VALUES(%s,%s)",
+                (d["conductor_id"],d["unidad_id"]))
 
-    cur.execute(
-        "UPDATE conductores SET estado='en_ruta' WHERE id=%s",
-        (data["conductor_id"],)
-    )
+    cur.execute("UPDATE conductores SET estado='en_ruta' WHERE id=%s",(d["conductor_id"],))
+    cur.execute("UPDATE unidades SET estado='ocupada' WHERE id=%s",(d["unidad_id"],))
 
-    cur.execute(
-        "UPDATE unidades SET estado='ocupada' WHERE id=%s",
-        (data["unidad_id"],)
-    )
+    conn.commit();conn.close()
+    return jsonify({"ok":True})
 
-    conn.commit()
-    conn.close()
-    return jsonify({"ok": True})
-
-# ================= FINALIZAR =================
-@app.route("/finalizar", methods=["POST"])
+@app.route("/finalizar",methods=["POST"])
 def finalizar():
-    data = request.json
-    conn = get_db()
-    cur = conn.cursor()
+    d=request.json
+    conn=get_db();cur=conn.cursor()
 
-    cur.execute(
-        "DELETE FROM asignaciones WHERE conductor_id=%s OR unidad_id=%s",
-        (data.get("conductor_id"), data.get("unidad_id"))
-    )
+    cur.execute("DELETE FROM asignaciones WHERE conductor_id=%s OR unidad_id=%s",
+                (d["conductor_id"],d["unidad_id"]))
 
-    cur.execute(
-        "UPDATE conductores SET estado='disponible' WHERE id=%s",
-        (data.get("conductor_id"),)
-    )
+    if d["conductor_id"]:
+        cur.execute("UPDATE conductores SET estado='disponible' WHERE id=%s",(d["conductor_id"],))
+    if d["unidad_id"]:
+        cur.execute("UPDATE unidades SET estado='disponible' WHERE id=%s",(d["unidad_id"],))
 
-    cur.execute(
-        "UPDATE unidades SET estado='disponible' WHERE id=%s",
-        (data.get("unidad_id"),)
-    )
+    conn.commit();conn.close()
+    return jsonify({"ok":True})
 
-    conn.commit()
-    conn.close()
-    return jsonify({"ok": True})
-
-# ================= ESTADO UNIDAD =================
-@app.route("/cambiar_estado_unidad", methods=["POST"])
-def cambiar_estado_unidad():
-    data = request.json
-    conn = get_db()
-    cur = conn.cursor()
-
-    cur.execute(
-        "UPDATE unidades SET estado=%s WHERE id=%s",
-        (data["estado"], data["unidad_id"])
-    )
-
-    cur.execute(
-        "INSERT INTO movimientos(accion, usuario, fecha, obs) VALUES(%s,%s,%s,%s)",
-        (
-            f"Unidad {data['estado']}",
-            session.get("user", "system"),
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            data.get("observacion", "")
-        )
-    )
-
-    conn.commit()
-    conn.close()
-    return jsonify({"ok": True})
-
-# ================= MOVIMIENTOS =================
+# ================= HISTORIAL =================
 @app.route("/movimientos")
 def movimientos():
-    conn = get_db()
-    cur = conn.cursor()
-
+    conn=get_db();cur=conn.cursor()
     cur.execute("SELECT * FROM movimientos ORDER BY id DESC")
-    data = cur.fetchall()
-
+    data=cur.fetchall()
     conn.close()
 
-    return jsonify([
-        {"id": x[0], "accion": x[1], "usuario": x[2], "fecha": x[3], "obs": x[4]}
-        for x in data
-    ])
+    return jsonify([{"accion":x[1],"usuario":x[2],"fecha":x[3],"obs":x[4]} for x in data])
 
 # ================= USUARIOS =================
 @app.route("/usuarios")
 def usuarios():
-    conn = get_db()
-    cur = conn.cursor()
-
-    cur.execute("SELECT id, username, rol FROM usuarios")
-    data = cur.fetchall()
-
+    conn=get_db();cur=conn.cursor()
+    cur.execute("SELECT id,username,rol FROM usuarios")
+    data=cur.fetchall()
     conn.close()
 
-    return jsonify([
-        {"id": x[0], "username": x[1], "rol": x[2]}
-        for x in data
-    ])
+    return jsonify([{"id":x[0],"username":x[1],"rol":x[2]} for x in data])
 
-@app.route("/crear_usuario", methods=["POST"])
+@app.route("/crear_usuario",methods=["POST"])
 def crear_usuario():
-    data = request.json
-    conn = get_db()
-    cur = conn.cursor()
+    d=request.json
+    conn=get_db();cur=conn.cursor()
+    cur.execute("INSERT INTO usuarios(username,password,rol) VALUES(%s,%s,%s)",
+                (d["username"],d["password"],d["rol"]))
+    conn.commit();conn.close()
+    return jsonify({"ok":True})
 
-    cur.execute(
-        "INSERT INTO usuarios(username, password, rol) VALUES(%s,%s,%s)",
-        (data["username"], data["password"], data["rol"])
-    )
-
-    conn.commit()
-    conn.close()
-    return jsonify({"ok": True})
-
-@app.route("/editar_usuario", methods=["POST"])
+@app.route("/editar_usuario",methods=["POST"])
 def editar_usuario():
-    data = request.json
-    conn = get_db()
-    cur = conn.cursor()
+    d=request.json
+    conn=get_db();cur=conn.cursor()
+    cur.execute("UPDATE usuarios SET username=%s,password=%s,rol=%s WHERE id=%s",
+                (d["username"],d["password"],d["rol"],d["id"]))
+    conn.commit();conn.close()
+    return jsonify({"ok":True})
 
-    cur.execute(
-        "UPDATE usuarios SET username=%s, password=%s, rol=%s WHERE id=%s",
-        (data["username"], data["password"], data["rol"], data["id"])
-    )
-
-    conn.commit()
-    conn.close()
-    return jsonify({"ok": True})
-
-@app.route("/eliminar_usuario", methods=["POST"])
+@app.route("/eliminar_usuario",methods=["POST"])
 def eliminar_usuario():
-    data = request.json
-    conn = get_db()
-    cur = conn.cursor()
-
-    cur.execute("DELETE FROM usuarios WHERE id=%s", (data["id"],))
-
-    conn.commit()
-    conn.close()
-    return jsonify({"ok": True})
-
-# ================= INDEX =================
-@app.route("/")
-def index():
-    return render_template("index.html", user={
-        "username": session.get("user", "Invitado"),
-        "rol": session.get("rol", "user")
-    })
+    d=request.json
+    conn=get_db();cur=conn.cursor()
+    cur.execute("DELETE FROM usuarios WHERE id=%s",(d["id"],))
+    conn.commit();conn.close()
+    return jsonify({"ok":True})
