@@ -64,9 +64,16 @@ def init_db():
     conn.commit()
     conn.close()
 
-init_db()
+# ================= INIT ENDPOINT =================
+@app.route("/init")
+def init():
+    try:
+        init_db()
+        return "Base de datos creada correctamente"
+    except Exception as e:
+        return str(e)
 
-# ================= LOGIN SIMPLE =================
+# ================= LOGIN =================
 @app.route("/login", methods=["POST"])
 def login():
     data = request.json
@@ -138,15 +145,17 @@ def datos():
         "stats": stats
     })
 
-# ================= CRUD =================
+# ================= CREAR =================
 @app.route("/crear_conductor", methods=["POST"])
 def crear_conductor():
     data = request.json
     conn = get_db()
     cur = conn.cursor()
 
-    cur.execute("INSERT INTO conductores(nombre, estado) VALUES(%s,'disponible')",
-                (data["nombre"],))
+    cur.execute(
+        "INSERT INTO conductores(nombre, estado) VALUES(%s,'disponible')",
+        (data["nombre"],)
+    )
 
     conn.commit()
     conn.close()
@@ -158,8 +167,10 @@ def crear_unidad():
     conn = get_db()
     cur = conn.cursor()
 
-    cur.execute("INSERT INTO unidades(placa, estado) VALUES(%s,'disponible')",
-                (data["placa"],))
+    cur.execute(
+        "INSERT INTO unidades(placa, estado) VALUES(%s,'disponible')",
+        (data["placa"],)
+    )
 
     conn.commit()
     conn.close()
@@ -172,14 +183,20 @@ def asignar():
     conn = get_db()
     cur = conn.cursor()
 
-    cur.execute("INSERT INTO asignaciones(conductor_id, unidad_id) VALUES(%s,%s)",
-                (data["conductor_id"], data["unidad_id"]))
+    cur.execute(
+        "INSERT INTO asignaciones(conductor_id, unidad_id) VALUES(%s,%s)",
+        (data["conductor_id"], data["unidad_id"])
+    )
 
-    cur.execute("UPDATE conductores SET estado='en_ruta' WHERE id=%s",
-                (data["conductor_id"],))
+    cur.execute(
+        "UPDATE conductores SET estado='en_ruta' WHERE id=%s",
+        (data["conductor_id"],)
+    )
 
-    cur.execute("UPDATE unidades SET estado='ocupada' WHERE id=%s",
-                (data["unidad_id"],))
+    cur.execute(
+        "UPDATE unidades SET estado='ocupada' WHERE id=%s",
+        (data["unidad_id"],)
+    )
 
     conn.commit()
     conn.close()
@@ -192,14 +209,20 @@ def finalizar():
     conn = get_db()
     cur = conn.cursor()
 
-    cur.execute("DELETE FROM asignaciones WHERE conductor_id=%s OR unidad_id=%s",
-                (data.get("conductor_id"), data.get("unidad_id")))
+    cur.execute(
+        "DELETE FROM asignaciones WHERE conductor_id=%s OR unidad_id=%s",
+        (data.get("conductor_id"), data.get("unidad_id"))
+    )
 
-    cur.execute("UPDATE conductores SET estado='disponible' WHERE id=%s",
-                (data.get("conductor_id"),))
+    cur.execute(
+        "UPDATE conductores SET estado='disponible' WHERE id=%s",
+        (data.get("conductor_id"),)
+    )
 
-    cur.execute("UPDATE unidades SET estado='disponible' WHERE id=%s",
-                (data.get("unidad_id"),))
+    cur.execute(
+        "UPDATE unidades SET estado='disponible' WHERE id=%s",
+        (data.get("unidad_id"),)
+    )
 
     conn.commit()
     conn.close()
@@ -212,18 +235,20 @@ def cambiar_estado_unidad():
     conn = get_db()
     cur = conn.cursor()
 
-    cur.execute("UPDATE unidades SET estado=%s WHERE id=%s",
-                (data["estado"], data["unidad_id"]))
+    cur.execute(
+        "UPDATE unidades SET estado=%s WHERE id=%s",
+        (data["estado"], data["unidad_id"])
+    )
 
-    cur.execute("""
-        INSERT INTO movimientos(accion, usuario, fecha, obs)
-        VALUES(%s,%s,%s,%s)
-    """, (
-        f"Unidad {data['estado']}",
-        session.get("user", "system"),
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        data.get("observacion", "")
-    ))
+    cur.execute(
+        "INSERT INTO movimientos(accion, usuario, fecha, obs) VALUES(%s,%s,%s,%s)",
+        (
+            f"Unidad {data['estado']}",
+            session.get("user", "system"),
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            data.get("observacion", "")
+        )
+    )
 
     conn.commit()
     conn.close()
@@ -267,10 +292,10 @@ def crear_usuario():
     conn = get_db()
     cur = conn.cursor()
 
-    cur.execute("""
-        INSERT INTO usuarios(username, password, rol)
-        VALUES(%s,%s,%s)
-    """, (data["username"], data["password"], data["rol"]))
+    cur.execute(
+        "INSERT INTO usuarios(username, password, rol) VALUES(%s,%s,%s)",
+        (data["username"], data["password"], data["rol"])
+    )
 
     conn.commit()
     conn.close()
@@ -282,10 +307,10 @@ def editar_usuario():
     conn = get_db()
     cur = conn.cursor()
 
-    cur.execute("""
-        UPDATE usuarios SET username=%s, password=%s, rol=%s
-        WHERE id=%s
-    """, (data["username"], data["password"], data["rol"], data["id"]))
+    cur.execute(
+        "UPDATE usuarios SET username=%s, password=%s, rol=%s WHERE id=%s",
+        (data["username"], data["password"], data["rol"], data["id"])
+    )
 
     conn.commit()
     conn.close()
@@ -306,8 +331,7 @@ def eliminar_usuario():
 # ================= INDEX =================
 @app.route("/")
 def index():
-    return render_template("index.html")
-
-# ================= RUN =================
-if __name__ == "__main__":
-    app.run(debug=True)
+    return render_template("index.html", user={
+        "username": session.get("user", "Invitado"),
+        "rol": session.get("rol", "user")
+    })
