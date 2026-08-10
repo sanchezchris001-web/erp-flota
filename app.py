@@ -1,4 +1,3 @@
-```python
 from flask import (
     Flask,
     request,
@@ -20,24 +19,24 @@ from openpyxl import Workbook
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
-# ============================================================
-# FLASK
-# ============================================================
-
 app = Flask(__name__)
+
+
+# ============================================================
+# CONFIGURACIÓN
+# ============================================================
 
 app.secret_key = os.environ.get(
     "SECRET_KEY",
-    "CAMBIA_ESTA_CLAVE_POR_UNA_MUY_SEGURA"
+    "CAMBIA_ESTA_CLAVE_EN_RENDER"
 )
 
 
 # ============================================================
-# CONFIGURACIÓN BASE DE DATOS
+# BASE DE DATOS
 # ============================================================
 
 def get_db():
-
     database_url = os.environ.get("DATABASE_URL")
 
     if not database_url:
@@ -51,10 +50,6 @@ def get_db():
     )
 
 
-# ============================================================
-# INICIALIZAR BASE DE DATOS
-# ============================================================
-
 def init_db():
 
     conn = get_db()
@@ -62,9 +57,9 @@ def init_db():
 
     try:
 
-        # ----------------------------------------------------
+        # ====================================================
         # CONDUCTORES
-        # ----------------------------------------------------
+        # ====================================================
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS conductores(
@@ -74,21 +69,23 @@ def init_db():
             )
         """)
 
-        # ----------------------------------------------------
+
+        # ====================================================
         # UNIDADES
-        # ----------------------------------------------------
+        # ====================================================
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS unidades(
                 id SERIAL PRIMARY KEY,
-                placa TEXT NOT NULL,
+                placa TEXT NOT NULL UNIQUE,
                 estado TEXT NOT NULL DEFAULT 'disponible'
             )
         """)
 
-        # ----------------------------------------------------
+
+        # ====================================================
         # ASIGNACIONES
-        # ----------------------------------------------------
+        # ====================================================
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS asignaciones(
@@ -99,9 +96,10 @@ def init_db():
             )
         """)
 
-        # ----------------------------------------------------
+
+        # ====================================================
         # MOVIMIENTOS
-        # ----------------------------------------------------
+        # ====================================================
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS movimientos(
@@ -113,9 +111,10 @@ def init_db():
             )
         """)
 
-        # ----------------------------------------------------
+
+        # ====================================================
         # USUARIOS
-        # ----------------------------------------------------
+        # ====================================================
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS usuarios(
@@ -126,9 +125,10 @@ def init_db():
             )
         """)
 
-        # ----------------------------------------------------
+
+        # ====================================================
         # SOLICITUDES
-        # ----------------------------------------------------
+        # ====================================================
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS solicitudes_asignacion(
@@ -144,7 +144,8 @@ def init_db():
             )
         """)
 
-        # Compatibilidad con instalaciones antiguas
+
+        # Compatibilidad con bases antiguas
 
         cur.execute("""
             ALTER TABLE solicitudes_asignacion
@@ -176,32 +177,14 @@ def init_db():
             ADD COLUMN IF NOT EXISTS fecha_atencion TIMESTAMP
         """)
 
-        # Índices para mejorar consultas
-
-        cur.execute("""
-            CREATE INDEX IF NOT EXISTS idx_solicitudes_estado
-            ON solicitudes_asignacion(estado)
-        """)
-
-        cur.execute("""
-            CREATE INDEX IF NOT EXISTS idx_asignaciones_conductor
-            ON asignaciones(conductor_id)
-        """)
-
-        cur.execute("""
-            CREATE INDEX IF NOT EXISTS idx_asignaciones_unidad
-            ON asignaciones(unidad_id)
-        """)
 
         conn.commit()
 
     except Exception:
-
         conn.rollback()
         raise
 
     finally:
-
         cur.close()
         conn.close()
 
@@ -211,12 +194,10 @@ def init_db():
 # ============================================================
 
 def usuario_actual():
-
     return session.get("user")
 
 
 def esta_logueado():
-
     return "user" in session
 
 
@@ -246,7 +227,7 @@ def requiere_rol(*roles):
             if not tiene_rol(*roles):
 
                 return jsonify({
-                    "error": "No autorizado"
+                    "error": "No autorizado para realizar esta acción"
                 }), 403
 
             return func(*args, **kwargs)
@@ -289,16 +270,16 @@ def registrar_movimiento(accion, obs=""):
         """, (
             accion,
             usuario,
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            datetime.now().strftime(
+                "%Y-%m-%d %H:%M:%S"
+            ),
             obs
         ))
 
         conn.commit()
 
     except Exception:
-
-        if conn:
-            conn.rollback()
+        pass
 
     finally:
 
@@ -310,25 +291,17 @@ def registrar_movimiento(accion, obs=""):
 
 
 # ============================================================
-# INICIALIZACIÓN MANUAL
+# INICIALIZAR BASE DE DATOS
 # ============================================================
 
 @app.route("/init")
 def init():
 
-    if not esta_logueado():
-
-        return redirect("/login")
-
-    if not tiene_rol("admin"):
-
-        return "No autorizado", 403
-
     try:
 
         init_db()
 
-        return "Base de datos lista."
+        return "Base de datos inicializada correctamente."
 
     except Exception as e:
 
@@ -377,7 +350,9 @@ def login():
                     rol
                 FROM usuarios
                 WHERE username=%s
-            """, (username,))
+            """, (
+                username,
+            ))
 
             user = cur.fetchone()
 
@@ -396,6 +371,7 @@ def login():
             if conn:
                 conn.close()
 
+
         if user:
 
             password_correcta = False
@@ -411,20 +387,20 @@ def login():
 
                 password_correcta = False
 
+
             if password_correcta:
 
-                roles_validos = [
+                if user[3] not in [
                     "admin",
                     "supervisor",
                     "operador"
-                ]
-
-                if user[3] not in roles_validos:
+                ]:
 
                     return render_template(
                         "login.html",
                         error="Rol de usuario inválido"
                     )
+
 
                 session.clear()
 
@@ -436,10 +412,12 @@ def login():
 
                 return redirect("/")
 
+
         return render_template(
             "login.html",
             error="Credenciales incorrectas"
         )
+
 
     return render_template("login.html")
 
@@ -457,10 +435,10 @@ def logout():
 
 
 # ============================================================
-# CREAR ADMIN INICIAL
+# CREAR ADMINISTRADOR INICIAL
 # ============================================================
 
-@app.route("/crear_admin", methods=["GET"])
+@app.route("/crear_admin")
 def crear_admin():
 
     conn = None
@@ -485,6 +463,7 @@ def crear_admin():
                 "El administrador inicial ya fue creado."
             ), 400
 
+
         username = os.environ.get(
             "ADMIN_USERNAME",
             "admin"
@@ -494,22 +473,18 @@ def crear_admin():
             "ADMIN_PASSWORD"
         )
 
+
         if not password:
 
             return (
-                "Falta configurar ADMIN_PASSWORD "
-                "en Render."
+                "Falta configurar ADMIN_PASSWORD en Render."
             ), 500
 
-        if not username:
-
-            return (
-                "ADMIN_USERNAME no puede estar vacío."
-            ), 500
 
         password_hash = generate_password_hash(
             password
         )
+
 
         cur.execute("""
             INSERT INTO usuarios(
@@ -523,12 +498,14 @@ def crear_admin():
             password_hash
         ))
 
+
         conn.commit()
 
         return (
-            "Administrador creado correctamente. "
-            "Ya puede iniciar sesión."
+            f"Administrador '{username}' creado correctamente. "
+            "Ya puedes iniciar sesión."
         )
+
 
     except Exception as e:
 
@@ -564,8 +541,7 @@ def index():
 
 
 # ============================================================
-# DASHBOARD
-# ADMIN / SUPERVISOR / OPERADOR
+# DATOS DEL DASHBOARD
 # ============================================================
 
 @app.route("/datos")
@@ -584,6 +560,7 @@ def datos():
         conn = get_db()
         cur = conn.cursor()
 
+
         # ----------------------------------------------------
         # CONDUCTORES
         # ----------------------------------------------------
@@ -599,6 +576,7 @@ def datos():
 
         conductores = cur.fetchall()
 
+
         # ----------------------------------------------------
         # UNIDADES
         # ----------------------------------------------------
@@ -613,6 +591,7 @@ def datos():
         """)
 
         unidades = cur.fetchall()
+
 
         # ----------------------------------------------------
         # ASIGNACIONES
@@ -635,11 +614,13 @@ def datos():
 
         asignaciones = cur.fetchall()
 
+
         # ----------------------------------------------------
         # ESTADÍSTICAS
         # ----------------------------------------------------
 
         stats = {}
+
 
         cur.execute("""
             SELECT COUNT(*)
@@ -649,6 +630,7 @@ def datos():
 
         stats["conductores_disponibles"] = cur.fetchone()[0]
 
+
         cur.execute("""
             SELECT COUNT(*)
             FROM conductores
@@ -656,6 +638,7 @@ def datos():
         """)
 
         stats["conductores_ocupados"] = cur.fetchone()[0]
+
 
         cur.execute("""
             SELECT COUNT(*)
@@ -665,6 +648,7 @@ def datos():
 
         stats["unidades_disponibles"] = cur.fetchone()[0]
 
+
         cur.execute("""
             SELECT COUNT(*)
             FROM unidades
@@ -673,6 +657,7 @@ def datos():
 
         stats["unidades_ocupadas"] = cur.fetchone()[0]
 
+
         cur.execute("""
             SELECT COUNT(*)
             FROM unidades
@@ -680,6 +665,7 @@ def datos():
         """)
 
         stats["unidades_inhabilitadas"] = cur.fetchone()[0]
+
 
         return jsonify({
 
@@ -716,6 +702,7 @@ def datos():
 
         })
 
+
     except Exception as e:
 
         return jsonify({
@@ -742,18 +729,20 @@ def crear_conductor():
 
     try:
 
-        d = request.get_json(silent=True) or {}
+        data = request.get_json(silent=True) or {}
 
-        nombre = d.get(
+        nombre = data.get(
             "nombre",
             ""
         ).strip()
+
 
         if not nombre:
 
             return jsonify({
                 "error": "Debe ingresar el nombre"
             }), 400
+
 
         conn = get_db()
         cur = conn.cursor()
@@ -764,20 +753,25 @@ def crear_conductor():
                 estado
             )
             VALUES(%s,'disponible')
-        """, (nombre,))
+        """, (
+            nombre,
+        ))
 
         conn.commit()
 
         cur.close()
         conn.close()
 
+
         registrar_movimiento(
             f"Creó conductor {nombre}"
         )
 
+
         return jsonify({
             "ok": True
         })
+
 
     except Exception as e:
 
@@ -788,7 +782,6 @@ def crear_conductor():
 
 # ============================================================
 # EDITAR CONDUCTOR
-# ADMIN / SUPERVISOR
 # ============================================================
 
 @app.route("/editar_conductor", methods=["POST"])
@@ -797,13 +790,14 @@ def editar_conductor():
 
     try:
 
-        d = request.get_json(silent=True) or {}
+        data = request.get_json(silent=True) or {}
 
-        conductor_id = d.get("id")
-        nombre = d.get(
+        conductor_id = data.get("id")
+        nombre = data.get(
             "nombre",
             ""
         ).strip()
+
 
         if not conductor_id or not nombre:
 
@@ -811,16 +805,21 @@ def editar_conductor():
                 "error": "Datos incompletos"
             }), 400
 
+
         conn = get_db()
         cur = conn.cursor()
+
 
         cur.execute("""
             SELECT nombre
             FROM conductores
             WHERE id=%s
-        """, (conductor_id,))
+        """, (
+            conductor_id,
+        ))
 
         anterior = cur.fetchone()
+
 
         if not anterior:
 
@@ -831,6 +830,7 @@ def editar_conductor():
                 "error": "Conductor no existe"
             }), 404
 
+
         cur.execute("""
             UPDATE conductores
             SET nombre=%s
@@ -840,18 +840,22 @@ def editar_conductor():
             conductor_id
         ))
 
+
         conn.commit()
 
         cur.close()
         conn.close()
 
+
         registrar_movimiento(
             f"Editó conductor {anterior[0]} → {nombre}"
         )
 
+
         return jsonify({
             "ok": True
         })
+
 
     except Exception as e:
 
@@ -862,7 +866,6 @@ def editar_conductor():
 
 # ============================================================
 # ELIMINAR CONDUCTOR
-# ADMIN / SUPERVISOR
 # ============================================================
 
 @app.route("/eliminar_conductor", methods=["POST"])
@@ -871,9 +874,10 @@ def eliminar_conductor():
 
     try:
 
-        d = request.get_json(silent=True) or {}
+        data = request.get_json(silent=True) or {}
 
-        conductor_id = d.get("id")
+        conductor_id = data.get("id")
+
 
         if not conductor_id:
 
@@ -881,8 +885,10 @@ def eliminar_conductor():
                 "error": "Conductor no especificado"
             }), 400
 
+
         conn = get_db()
         cur = conn.cursor()
+
 
         cur.execute("""
             SELECT
@@ -890,9 +896,12 @@ def eliminar_conductor():
                 estado
             FROM conductores
             WHERE id=%s
-        """, (conductor_id,))
+        """, (
+            conductor_id,
+        ))
 
         conductor = cur.fetchone()
+
 
         if not conductor:
 
@@ -903,6 +912,7 @@ def eliminar_conductor():
                 "error": "Conductor no existe"
             }), 404
 
+
         if conductor[1] == "en_ruta":
 
             cur.close()
@@ -912,11 +922,14 @@ def eliminar_conductor():
                 "error": "No se puede eliminar un conductor en ruta"
             }), 400
 
+
         cur.execute("""
             SELECT id
             FROM asignaciones
             WHERE conductor_id=%s
-        """, (conductor_id,))
+        """, (
+            conductor_id,
+        ))
 
         if cur.fetchone():
 
@@ -924,26 +937,33 @@ def eliminar_conductor():
             conn.close()
 
             return jsonify({
-                "error": "El conductor tiene asignaciones registradas"
+                "error": "El conductor tiene una asignación activa"
             }), 400
+
 
         cur.execute("""
             DELETE FROM conductores
             WHERE id=%s
-        """, (conductor_id,))
+        """, (
+            conductor_id,
+        ))
+
 
         conn.commit()
 
         cur.close()
         conn.close()
 
+
         registrar_movimiento(
             f"Eliminó conductor {conductor[0]}"
         )
 
+
         return jsonify({
             "ok": True
         })
+
 
     except Exception as e:
 
@@ -954,7 +974,6 @@ def eliminar_conductor():
 
 # ============================================================
 # CREAR UNIDAD
-# ADMIN / SUPERVISOR
 # ============================================================
 
 @app.route("/crear_unidad", methods=["POST"])
@@ -963,12 +982,13 @@ def crear_unidad():
 
     try:
 
-        d = request.get_json(silent=True) or {}
+        data = request.get_json(silent=True) or {}
 
-        placa = d.get(
+        placa = data.get(
             "placa",
             ""
         ).strip().upper()
+
 
         if not placa:
 
@@ -976,14 +996,19 @@ def crear_unidad():
                 "error": "Debe ingresar la placa"
             }), 400
 
+
         conn = get_db()
         cur = conn.cursor()
+
 
         cur.execute("""
             SELECT id
             FROM unidades
             WHERE UPPER(placa)=UPPER(%s)
-        """, (placa,))
+        """, (
+            placa,
+        ))
+
 
         if cur.fetchone():
 
@@ -994,26 +1019,33 @@ def crear_unidad():
                 "error": "La unidad ya existe"
             }), 400
 
+
         cur.execute("""
             INSERT INTO unidades(
                 placa,
                 estado
             )
             VALUES(%s,'disponible')
-        """, (placa,))
+        """, (
+            placa,
+        ))
+
 
         conn.commit()
 
         cur.close()
         conn.close()
 
+
         registrar_movimiento(
             f"Creó unidad {placa}"
         )
 
+
         return jsonify({
             "ok": True
         })
+
 
     except Exception as e:
 
@@ -1024,7 +1056,6 @@ def crear_unidad():
 
 # ============================================================
 # EDITAR UNIDAD
-# ADMIN / SUPERVISOR
 # ============================================================
 
 @app.route("/editar_unidad", methods=["POST"])
@@ -1033,13 +1064,15 @@ def editar_unidad():
 
     try:
 
-        d = request.get_json(silent=True) or {}
+        data = request.get_json(silent=True) or {}
 
-        unidad_id = d.get("id")
-        placa = d.get(
+        unidad_id = data.get("id")
+
+        placa = data.get(
             "placa",
             ""
         ).strip().upper()
+
 
         if not unidad_id or not placa:
 
@@ -1047,8 +1080,10 @@ def editar_unidad():
                 "error": "Datos incompletos"
             }), 400
 
+
         conn = get_db()
         cur = conn.cursor()
+
 
         cur.execute("""
             SELECT
@@ -1056,9 +1091,12 @@ def editar_unidad():
                 estado
             FROM unidades
             WHERE id=%s
-        """, (unidad_id,))
+        """, (
+            unidad_id,
+        ))
 
         unidad = cur.fetchone()
+
 
         if not unidad:
 
@@ -1068,6 +1106,7 @@ def editar_unidad():
             return jsonify({
                 "error": "Unidad no existe"
             }), 404
+
 
         cur.execute("""
             SELECT id
@@ -1079,6 +1118,7 @@ def editar_unidad():
             unidad_id
         ))
 
+
         if cur.fetchone():
 
             cur.close()
@@ -1087,6 +1127,7 @@ def editar_unidad():
             return jsonify({
                 "error": "La placa ya está registrada"
             }), 400
+
 
         cur.execute("""
             UPDATE unidades
@@ -1097,18 +1138,22 @@ def editar_unidad():
             unidad_id
         ))
 
+
         conn.commit()
 
         cur.close()
         conn.close()
 
+
         registrar_movimiento(
             f"Editó unidad {unidad[0]} → {placa}"
         )
 
+
         return jsonify({
             "ok": True
         })
+
 
     except Exception as e:
 
@@ -1119,7 +1164,6 @@ def editar_unidad():
 
 # ============================================================
 # ELIMINAR UNIDAD
-# ADMIN / SUPERVISOR
 # ============================================================
 
 @app.route("/eliminar_unidad", methods=["POST"])
@@ -1128,9 +1172,10 @@ def eliminar_unidad():
 
     try:
 
-        d = request.get_json(silent=True) or {}
+        data = request.get_json(silent=True) or {}
 
-        unidad_id = d.get("id")
+        unidad_id = data.get("id")
+
 
         if not unidad_id:
 
@@ -1138,8 +1183,10 @@ def eliminar_unidad():
                 "error": "Unidad no especificada"
             }), 400
 
+
         conn = get_db()
         cur = conn.cursor()
+
 
         cur.execute("""
             SELECT
@@ -1147,9 +1194,12 @@ def eliminar_unidad():
                 estado
             FROM unidades
             WHERE id=%s
-        """, (unidad_id,))
+        """, (
+            unidad_id,
+        ))
 
         unidad = cur.fetchone()
+
 
         if not unidad:
 
@@ -1160,6 +1210,7 @@ def eliminar_unidad():
                 "error": "Unidad no existe"
             }), 404
 
+
         if unidad[1] == "ocupada":
 
             cur.close()
@@ -1169,11 +1220,15 @@ def eliminar_unidad():
                 "error": "No se puede eliminar una unidad ocupada"
             }), 400
 
+
         cur.execute("""
             SELECT id
             FROM asignaciones
             WHERE unidad_id=%s
-        """, (unidad_id,))
+        """, (
+            unidad_id,
+        ))
+
 
         if cur.fetchone():
 
@@ -1181,26 +1236,33 @@ def eliminar_unidad():
             conn.close()
 
             return jsonify({
-                "error": "La unidad tiene asignaciones registradas"
+                "error": "La unidad tiene una asignación activa"
             }), 400
+
 
         cur.execute("""
             DELETE FROM unidades
             WHERE id=%s
-        """, (unidad_id,))
+        """, (
+            unidad_id,
+        ))
+
 
         conn.commit()
 
         cur.close()
         conn.close()
 
+
         registrar_movimiento(
             f"Eliminó unidad {unidad[0]}"
         )
 
+
         return jsonify({
             "ok": True
         })
+
 
     except Exception as e:
 
@@ -1219,13 +1281,15 @@ def eliminar_unidad():
 def asignar():
 
     conn = None
+    cur = None
 
     try:
 
-        d = request.get_json(silent=True) or {}
+        data = request.get_json(silent=True) or {}
 
-        conductor_id = d.get("conductor_id")
-        unidad_id = d.get("unidad_id")
+        conductor_id = data.get("conductor_id")
+        unidad_id = data.get("unidad_id")
+
 
         if not conductor_id or not unidad_id:
 
@@ -1233,8 +1297,10 @@ def asignar():
                 "error": "Debe seleccionar conductor y unidad"
             }), 400
 
+
         conn = get_db()
         cur = conn.cursor()
+
 
         cur.execute("""
             SELECT
@@ -1244,15 +1310,19 @@ def asignar():
             FROM conductores
             WHERE id=%s
             FOR UPDATE
-        """, (conductor_id,))
+        """, (
+            conductor_id,
+        ))
 
         conductor = cur.fetchone()
+
 
         if not conductor:
 
             return jsonify({
                 "error": "Conductor no existe"
             }), 404
+
 
         cur.execute("""
             SELECT
@@ -1262,9 +1332,12 @@ def asignar():
             FROM unidades
             WHERE id=%s
             FOR UPDATE
-        """, (unidad_id,))
+        """, (
+            unidad_id,
+        ))
 
         unidad = cur.fetchone()
+
 
         if not unidad:
 
@@ -1272,17 +1345,20 @@ def asignar():
                 "error": "Unidad no existe"
             }), 404
 
+
         if conductor[2] != "disponible":
 
             return jsonify({
                 "error": "El conductor no está disponible"
             }), 400
 
+
         if unidad[2] != "disponible":
 
             return jsonify({
                 "error": "La unidad no está disponible"
             }), 400
+
 
         cur.execute("""
             SELECT id
@@ -1294,11 +1370,13 @@ def asignar():
             unidad_id
         ))
 
+
         if cur.fetchone():
 
             return jsonify({
-                "error": "El conductor o la unidad ya tienen una asignación activa"
+                "error": "El conductor o la unidad ya tienen una asignación"
             }), 400
+
 
         cur.execute("""
             INSERT INTO asignaciones(
@@ -1311,48 +1389,58 @@ def asignar():
             unidad_id
         ))
 
+
         cur.execute("""
             UPDATE conductores
             SET estado='en_ruta'
             WHERE id=%s
-        """, (conductor_id,))
+        """, (
+            conductor_id,
+        ))
+
 
         cur.execute("""
             UPDATE unidades
             SET estado='ocupada'
             WHERE id=%s
-        """, (unidad_id,))
+        """, (
+            unidad_id,
+        ))
+
 
         conn.commit()
 
-        cur.close()
-        conn.close()
-
-        conn = None
 
         registrar_movimiento(
             f"Asignó {conductor[1]} → {unidad[1]}"
         )
 
+
         return jsonify({
             "ok": True
         })
 
+
     except Exception as e:
 
         if conn:
-
             conn.rollback()
-            conn.close()
 
         return jsonify({
             "error": str(e)
         }), 500
 
+    finally:
+
+        if cur:
+            cur.close()
+
+        if conn:
+            conn.close()
+
 
 # ============================================================
 # FINALIZAR ASIGNACIÓN
-# ADMIN / SUPERVISOR
 # ============================================================
 
 @app.route("/finalizar", methods=["POST"])
@@ -1360,13 +1448,15 @@ def asignar():
 def finalizar():
 
     conn = None
+    cur = None
 
     try:
 
-        d = request.get_json(silent=True) or {}
+        data = request.get_json(silent=True) or {}
 
-        conductor_id = d.get("conductor_id")
-        unidad_id = d.get("unidad_id")
+        conductor_id = data.get("conductor_id")
+        unidad_id = data.get("unidad_id")
+
 
         if not conductor_id and not unidad_id:
 
@@ -1374,8 +1464,10 @@ def finalizar():
                 "error": "Debe seleccionar conductor o unidad"
             }), 400
 
+
         conn = get_db()
         cur = conn.cursor()
+
 
         if conductor_id and unidad_id:
 
@@ -1395,7 +1487,9 @@ def finalizar():
                 SELECT id
                 FROM asignaciones
                 WHERE conductor_id=%s
-            """, (conductor_id,))
+            """, (
+                conductor_id,
+            ))
 
         else:
 
@@ -1403,9 +1497,13 @@ def finalizar():
                 SELECT id
                 FROM asignaciones
                 WHERE unidad_id=%s
-            """, (unidad_id,))
+            """, (
+                unidad_id,
+            ))
+
 
         asignacion = cur.fetchone()
+
 
         if not asignacion:
 
@@ -1413,13 +1511,17 @@ def finalizar():
                 "error": "No existe una asignación activa"
             }), 404
 
+
         if conductor_id:
 
             cur.execute("""
                 UPDATE conductores
                 SET estado='disponible'
                 WHERE id=%s
-            """, (conductor_id,))
+            """, (
+                conductor_id,
+            ))
+
 
         if unidad_id:
 
@@ -1427,7 +1529,10 @@ def finalizar():
                 UPDATE unidades
                 SET estado='disponible'
                 WHERE id=%s
-            """, (unidad_id,))
+            """, (
+                unidad_id,
+            ))
+
 
         if conductor_id and unidad_id:
 
@@ -1445,45 +1550,53 @@ def finalizar():
             cur.execute("""
                 DELETE FROM asignaciones
                 WHERE conductor_id=%s
-            """, (conductor_id,))
+            """, (
+                conductor_id,
+            ))
 
         else:
 
             cur.execute("""
                 DELETE FROM asignaciones
                 WHERE unidad_id=%s
-            """, (unidad_id,))
+            """, (
+                unidad_id,
+            ))
+
 
         conn.commit()
 
-        cur.close()
-        conn.close()
-
-        conn = None
 
         registrar_movimiento(
             "Finalizó asignación"
         )
 
+
         return jsonify({
             "ok": True
         })
 
+
     except Exception as e:
 
         if conn:
-
             conn.rollback()
-            conn.close()
 
         return jsonify({
             "error": str(e)
         }), 500
 
+    finally:
+
+        if cur:
+            cur.close()
+
+        if conn:
+            conn.close()
+
 
 # ============================================================
 # CAMBIAR ESTADO UNIDAD
-# ADMIN / SUPERVISOR
 # ============================================================
 
 @app.route("/cambiar_estado_unidad", methods=["POST"])
@@ -1492,20 +1605,22 @@ def cambiar_estado_unidad():
 
     try:
 
-        d = request.get_json(silent=True) or {}
+        data = request.get_json(silent=True) or {}
 
-        unidad_id = d.get("unidad_id")
-        nuevo_estado = d.get("estado")
+        unidad_id = data.get("unidad_id")
+        nuevo_estado = data.get("estado")
 
-        observacion = d.get(
+        observacion = data.get(
             "observacion",
             ""
         ).strip()
+
 
         estados_validos = [
             "disponible",
             "inhabilitado"
         ]
+
 
         if nuevo_estado not in estados_validos:
 
@@ -1513,8 +1628,10 @@ def cambiar_estado_unidad():
                 "error": "Estado inválido"
             }), 400
 
+
         conn = get_db()
         cur = conn.cursor()
+
 
         cur.execute("""
             SELECT
@@ -1522,9 +1639,12 @@ def cambiar_estado_unidad():
                 estado
             FROM unidades
             WHERE id=%s
-        """, (unidad_id,))
+        """, (
+            unidad_id,
+        ))
 
         unidad = cur.fetchone()
+
 
         if not unidad:
 
@@ -1535,14 +1655,16 @@ def cambiar_estado_unidad():
                 "error": "Unidad no existe"
             }), 404
 
+
         if unidad[1] == "ocupada":
 
             cur.close()
             conn.close()
 
             return jsonify({
-                "error": "No se puede cambiar el estado de una unidad ocupada"
+                "error": "No se puede cambiar una unidad ocupada"
             }), 400
+
 
         cur.execute("""
             UPDATE unidades
@@ -1553,10 +1675,12 @@ def cambiar_estado_unidad():
             unidad_id
         ))
 
+
         conn.commit()
 
         cur.close()
         conn.close()
+
 
         estado_texto = (
             "INHABILITADA"
@@ -1564,14 +1688,17 @@ def cambiar_estado_unidad():
             else "HABILITADA"
         )
 
+
         registrar_movimiento(
             f"Unidad {unidad[0]} fue {estado_texto}",
             observacion
         )
 
+
         return jsonify({
             "ok": True
         })
+
 
     except Exception as e:
 
@@ -1590,18 +1717,20 @@ def cambiar_estado_unidad():
 def solicitar_asignacion():
 
     conn = None
+    cur = None
 
     try:
 
-        d = request.get_json(silent=True) or {}
+        data = request.get_json(silent=True) or {}
 
-        conductor_id = d.get("conductor_id")
-        unidad_id = d.get("unidad_id")
+        conductor_id = data.get("conductor_id")
+        unidad_id = data.get("unidad_id")
 
-        observacion = d.get(
+        observacion = data.get(
             "observacion",
             ""
         ).strip()
+
 
         if not conductor_id or not unidad_id:
 
@@ -1609,8 +1738,10 @@ def solicitar_asignacion():
                 "error": "Debe seleccionar conductor y unidad"
             }), 400
 
+
         conn = get_db()
         cur = conn.cursor()
+
 
         # ----------------------------------------------------
         # CONDUCTOR
@@ -1623,15 +1754,19 @@ def solicitar_asignacion():
                 estado
             FROM conductores
             WHERE id=%s
-        """, (conductor_id,))
+        """, (
+            conductor_id,
+        ))
 
         conductor = cur.fetchone()
+
 
         if not conductor:
 
             return jsonify({
                 "error": "Conductor no existe"
             }), 404
+
 
         # ----------------------------------------------------
         # UNIDAD
@@ -1644,9 +1779,12 @@ def solicitar_asignacion():
                 estado
             FROM unidades
             WHERE id=%s
-        """, (unidad_id,))
+        """, (
+            unidad_id,
+        ))
 
         unidad = cur.fetchone()
+
 
         if not unidad:
 
@@ -1654,11 +1792,13 @@ def solicitar_asignacion():
                 "error": "Unidad no existe"
             }), 404
 
+
         if conductor[2] != "disponible":
 
             return jsonify({
                 "error": "El conductor no está disponible"
             }), 400
+
 
         if unidad[2] != "disponible":
 
@@ -1666,14 +1806,16 @@ def solicitar_asignacion():
                 "error": "La unidad no está disponible"
             }), 400
 
+
         # ----------------------------------------------------
-        # USUARIO
+        # USUARIO ACTUAL
         # ----------------------------------------------------
 
         usuario_id = session["user"]["id"]
 
+
         # ----------------------------------------------------
-        # EVITAR DUPLICADOS
+        # EVITAR SOLICITUD DUPLICADA
         # ----------------------------------------------------
 
         cur.execute("""
@@ -1687,11 +1829,13 @@ def solicitar_asignacion():
             unidad_id
         ))
 
+
         if cur.fetchone():
 
             return jsonify({
                 "error": "Ya existe una solicitud pendiente para esta asignación"
             }), 400
+
 
         # ----------------------------------------------------
         # CREAR SOLICITUD
@@ -1719,38 +1863,42 @@ def solicitar_asignacion():
             observacion
         ))
 
+
         conn.commit()
 
-        cur.close()
-        conn.close()
-
-        conn = None
 
         registrar_movimiento(
             f"Solicitó asignación {conductor[1]} → {unidad[1]}",
             observacion
         )
 
+
         return jsonify({
             "ok": True,
             "mensaje": "Solicitud enviada correctamente"
         })
 
+
     except Exception as e:
 
         if conn:
-
             conn.rollback()
-            conn.close()
 
         return jsonify({
             "error": str(e)
         }), 500
 
+    finally:
+
+        if cur:
+            cur.close()
+
+        if conn:
+            conn.close()
+
 
 # ============================================================
 # VER SOLICITUDES
-# ADMIN / SUPERVISOR / OPERADOR
 # ============================================================
 
 @app.route("/solicitudes")
@@ -1769,14 +1917,8 @@ def solicitudes():
         conn = get_db()
         cur = conn.cursor()
 
-        # ----------------------------------------------------
-        # OPERADOR
-        # SOLAMENTE SUS SOLICITUDES
-        # ----------------------------------------------------
 
         if tiene_rol("operador"):
-
-            usuario_id = session["user"]["id"]
 
             cur.execute("""
                 SELECT
@@ -1789,20 +1931,22 @@ def solicitudes():
                     COALESCE(us.username,''),
                     COALESCE(s.atendido_por,'')
                 FROM solicitudes_asignacion s
+
                 JOIN conductores c
                     ON c.id=s.conductor_id
+
                 JOIN unidades u
                     ON u.id=s.unidad_id
+
                 LEFT JOIN usuarios us
                     ON us.id=s.usuario_id
-                WHERE s.usuario_id=%s
-                ORDER BY s.id DESC
-            """, (usuario_id,))
 
-        # ----------------------------------------------------
-        # ADMIN / SUPERVISOR
-        # TODAS
-        # ----------------------------------------------------
+                WHERE s.usuario_id=%s
+
+                ORDER BY s.id DESC
+            """, (
+                session["user"]["id"],
+            ))
 
         else:
 
@@ -1817,16 +1961,22 @@ def solicitudes():
                     COALESCE(us.username,''),
                     COALESCE(s.atendido_por,'')
                 FROM solicitudes_asignacion s
+
                 JOIN conductores c
                     ON c.id=s.conductor_id
+
                 JOIN unidades u
                     ON u.id=s.unidad_id
+
                 LEFT JOIN usuarios us
                     ON us.id=s.usuario_id
+
                 ORDER BY s.id DESC
             """)
 
+
         data = cur.fetchall()
+
 
         return jsonify([
             {
@@ -1841,6 +1991,7 @@ def solicitudes():
             }
             for x in data
         ])
+
 
     except Exception as e:
 
@@ -1867,14 +2018,16 @@ def solicitudes():
 def aprobar_solicitud():
 
     conn = None
+    cur = None
 
     try:
 
-        d = request.get_json(silent=True) or {}
+        data = request.get_json(silent=True) or {}
 
-        solicitud_id = d.get(
+        solicitud_id = data.get(
             "solicitud_id"
         )
+
 
         if not solicitud_id:
 
@@ -1882,8 +2035,10 @@ def aprobar_solicitud():
                 "error": "Solicitud no especificada"
             }), 400
 
+
         conn = get_db()
         cur = conn.cursor()
+
 
         cur.execute("""
             SELECT
@@ -1896,21 +2051,30 @@ def aprobar_solicitud():
                 u.placa,
                 u.estado
             FROM solicitudes_asignacion s
+
             JOIN conductores c
                 ON c.id=s.conductor_id
+
             JOIN unidades u
                 ON u.id=s.unidad_id
+
             WHERE s.id=%s
+
             FOR UPDATE
-        """, (solicitud_id,))
+        """, (
+            solicitud_id,
+        ))
+
 
         solicitud = cur.fetchone()
+
 
         if not solicitud:
 
             return jsonify({
                 "error": "Solicitud no existe"
             }), 404
+
 
         (
             sid,
@@ -1923,11 +2087,13 @@ def aprobar_solicitud():
             unidad_estado
         ) = solicitud
 
+
         if estado_solicitud != "pendiente":
 
             return jsonify({
                 "error": "La solicitud ya fue procesada"
             }), 400
+
 
         if conductor_estado != "disponible":
 
@@ -1935,15 +2101,15 @@ def aprobar_solicitud():
                 "error": "El conductor ya no está disponible"
             }), 400
 
+
         if unidad_estado != "disponible":
 
             return jsonify({
                 "error": "La unidad ya no está disponible"
             }), 400
 
-        # ----------------------------------------------------
-        # CREAR ASIGNACIÓN
-        # ----------------------------------------------------
+
+        # Evitar doble asignación
 
         cur.execute("""
             SELECT id
@@ -1955,11 +2121,15 @@ def aprobar_solicitud():
             unidad_id
         ))
 
+
         if cur.fetchone():
 
             return jsonify({
-                "error": "El conductor o la unidad ya tienen una asignación activa"
+                "error": "El conductor o la unidad ya están asignados"
             }), 400
+
+
+        # Crear asignación
 
         cur.execute("""
             INSERT INTO asignaciones(
@@ -1972,19 +2142,33 @@ def aprobar_solicitud():
             unidad_id
         ))
 
+
+        # Conductor ocupado
+
         cur.execute("""
             UPDATE conductores
             SET estado='en_ruta'
             WHERE id=%s
-        """, (conductor_id,))
+        """, (
+            conductor_id,
+        ))
+
+
+        # Unidad ocupada
 
         cur.execute("""
             UPDATE unidades
             SET estado='ocupada'
             WHERE id=%s
-        """, (unidad_id,))
+        """, (
+            unidad_id,
+        ))
+
+
+        # Solicitud aprobada
 
         usuario = session["user"]["username"]
+
 
         cur.execute("""
             UPDATE solicitudes_asignacion
@@ -1998,55 +2182,63 @@ def aprobar_solicitud():
             solicitud_id
         ))
 
+
         conn.commit()
 
-        cur.close()
-        conn.close()
-
-        conn = None
 
         registrar_movimiento(
             f"Aprobó solicitud {conductor_nombre} → {placa}"
         )
+
 
         return jsonify({
             "ok": True,
             "mensaje": "Asignación aprobada"
         })
 
+
     except Exception as e:
 
         if conn:
-
             conn.rollback()
-            conn.close()
 
         return jsonify({
             "error": str(e)
         }), 500
 
+    finally:
+
+        if cur:
+            cur.close()
+
+        if conn:
+            conn.close()
+
 
 # ============================================================
 # RECHAZAR SOLICITUD
-# ADMIN / SUPERVISOR
 # ============================================================
 
 @app.route("/rechazar_solicitud", methods=["POST"])
 @requiere_rol("admin", "supervisor")
 def rechazar_solicitud():
 
+    conn = None
+    cur = None
+
     try:
 
-        d = request.get_json(silent=True) or {}
+        data = request.get_json(silent=True) or {}
 
-        solicitud_id = d.get(
+        solicitud_id = data.get(
             "solicitud_id"
         )
 
-        observacion = d.get(
+        observacion = data.get(
             "observacion",
             ""
         ).strip()
+
 
         if not solicitud_id:
 
@@ -2054,37 +2246,45 @@ def rechazar_solicitud():
                 "error": "Solicitud no especificada"
             }), 400
 
+
         conn = get_db()
         cur = conn.cursor()
+
 
         cur.execute("""
             SELECT
                 c.nombre,
                 u.placa
             FROM solicitudes_asignacion s
+
             JOIN conductores c
                 ON c.id=s.conductor_id
+
             JOIN unidades u
                 ON u.id=s.unidad_id
+
             WHERE s.id=%s
             AND s.estado='pendiente'
-        """, (solicitud_id,))
+        """, (
+            solicitud_id,
+        ))
+
 
         solicitud = cur.fetchone()
 
-        if not solicitud:
 
-            cur.close()
-            conn.close()
+        if not solicitud:
 
             return jsonify({
                 "error": "Solicitud no encontrada o ya procesada"
             }), 404
 
+
         conductor = solicitud[0]
         placa = solicitud[1]
 
         usuario = session["user"]["username"]
+
 
         cur.execute("""
             UPDATE solicitudes_asignacion
@@ -2100,26 +2300,38 @@ def rechazar_solicitud():
             solicitud_id
         ))
 
+
         conn.commit()
 
-        cur.close()
-        conn.close()
 
         registrar_movimiento(
             f"Rechazó solicitud {conductor} → {placa}",
             observacion
         )
 
+
         return jsonify({
             "ok": True,
             "mensaje": "Solicitud rechazada"
         })
 
+
     except Exception as e:
+
+        if conn:
+            conn.rollback()
 
         return jsonify({
             "error": str(e)
         }), 500
+
+    finally:
+
+        if cur:
+            cur.close()
+
+        if conn:
+            conn.close()
 
 
 # ============================================================
@@ -2136,6 +2348,7 @@ def movimientos():
         conn = get_db()
         cur = conn.cursor()
 
+
         cur.execute("""
             SELECT
                 id,
@@ -2147,10 +2360,13 @@ def movimientos():
             ORDER BY id DESC
         """)
 
+
         data = cur.fetchall()
+
 
         cur.close()
         conn.close()
+
 
         return jsonify([
             {
@@ -2162,6 +2378,7 @@ def movimientos():
             }
             for x in data
         ])
+
 
     except Exception as e:
 
@@ -2184,6 +2401,7 @@ def usuarios():
         conn = get_db()
         cur = conn.cursor()
 
+
         cur.execute("""
             SELECT
                 id,
@@ -2193,10 +2411,13 @@ def usuarios():
             ORDER BY username
         """)
 
+
         data = cur.fetchall()
+
 
         cur.close()
         conn.close()
+
 
         return jsonify([
             {
@@ -2206,6 +2427,7 @@ def usuarios():
             }
             for x in data
         ])
+
 
     except Exception as e:
 
@@ -2225,19 +2447,20 @@ def crear_usuario():
 
     try:
 
-        d = request.get_json(silent=True) or {}
+        data = request.get_json(silent=True) or {}
 
-        username = d.get(
+        username = data.get(
             "username",
             ""
         ).strip()
 
-        password = d.get(
+        password = data.get(
             "password",
             ""
         )
 
-        rol = d.get("rol")
+        rol = data.get("rol")
+
 
         roles_validos = [
             "admin",
@@ -2245,11 +2468,13 @@ def crear_usuario():
             "operador"
         ]
 
+
         if not username or not password:
 
             return jsonify({
                 "error": "Usuario y contraseña son obligatorios"
             }), 400
+
 
         if rol not in roles_validos:
 
@@ -2257,14 +2482,19 @@ def crear_usuario():
                 "error": "Rol inválido"
             }), 400
 
+
         conn = get_db()
         cur = conn.cursor()
+
 
         cur.execute("""
             SELECT id
             FROM usuarios
             WHERE username=%s
-        """, (username,))
+        """, (
+            username,
+        ))
+
 
         if cur.fetchone():
 
@@ -2275,9 +2505,11 @@ def crear_usuario():
                 "error": "Usuario ya existe"
             }), 400
 
+
         password_hash = generate_password_hash(
             password
         )
+
 
         cur.execute("""
             INSERT INTO usuarios(
@@ -2292,18 +2524,22 @@ def crear_usuario():
             rol
         ))
 
+
         conn.commit()
 
         cur.close()
         conn.close()
 
+
         registrar_movimiento(
             f"Creó usuario {username} ({rol})"
         )
 
+
         return jsonify({
             "ok": True
         })
+
 
     except Exception as e:
 
@@ -2314,7 +2550,6 @@ def crear_usuario():
 
 # ============================================================
 # EDITAR USUARIO
-# SOLO ADMIN
 # ============================================================
 
 @app.route("/editar_usuario", methods=["POST"])
@@ -2323,21 +2558,22 @@ def editar_usuario():
 
     try:
 
-        d = request.get_json(silent=True) or {}
+        data = request.get_json(silent=True) or {}
 
-        user_id = d.get("id")
+        user_id = data.get("id")
 
-        username = d.get(
+        username = data.get(
             "username",
             ""
         ).strip()
 
-        password = d.get(
+        password = data.get(
             "password",
             ""
         )
 
-        rol = d.get("rol")
+        rol = data.get("rol")
+
 
         roles_validos = [
             "admin",
@@ -2345,11 +2581,13 @@ def editar_usuario():
             "operador"
         ]
 
+
         if not user_id or not username:
 
             return jsonify({
                 "error": "Datos incompletos"
             }), 400
+
 
         if rol not in roles_validos:
 
@@ -2357,8 +2595,10 @@ def editar_usuario():
                 "error": "Rol inválido"
             }), 400
 
+
         conn = get_db()
         cur = conn.cursor()
+
 
         cur.execute("""
             SELECT
@@ -2366,9 +2606,13 @@ def editar_usuario():
                 rol
             FROM usuarios
             WHERE id=%s
-        """, (user_id,))
+        """, (
+            user_id,
+        ))
+
 
         usuario = cur.fetchone()
+
 
         if not usuario:
 
@@ -2379,11 +2623,13 @@ def editar_usuario():
                 "error": "Usuario no existe"
             }), 404
 
+
         if password:
 
             password_hash = generate_password_hash(
                 password
             )
+
 
             cur.execute("""
                 UPDATE usuarios
@@ -2413,25 +2659,30 @@ def editar_usuario():
                 user_id
             ))
 
+
         conn.commit()
 
         cur.close()
         conn.close()
 
-        # Actualizar sesión si editó su propio usuario
 
-        if user_id == session["user"].get("id"):
+        # Actualizar sesión si el admin se modifica a sí mismo
+
+        if int(user_id) == int(session["user"]["id"]):
 
             session["user"]["username"] = username
             session["user"]["rol"] = rol
+
 
         registrar_movimiento(
             f"Editó usuario {usuario[0]} → {username}"
         )
 
+
         return jsonify({
             "ok": True
         })
+
 
     except Exception as e:
 
@@ -2442,7 +2693,6 @@ def editar_usuario():
 
 # ============================================================
 # ELIMINAR USUARIO
-# SOLO ADMIN
 # ============================================================
 
 @app.route("/eliminar_usuario", methods=["POST"])
@@ -2451,9 +2701,10 @@ def eliminar_usuario():
 
     try:
 
-        d = request.get_json(silent=True) or {}
+        data = request.get_json(silent=True) or {}
 
-        user_id = d.get("id")
+        user_id = data.get("id")
+
 
         if not user_id:
 
@@ -2461,26 +2712,29 @@ def eliminar_usuario():
                 "error": "Usuario no especificado"
             }), 400
 
-        # No eliminarse a sí mismo
 
-        if int(user_id) == int(
-            session["user"].get("id")
-        ):
+        if int(user_id) == int(session["user"]["id"]):
 
             return jsonify({
                 "error": "No puede eliminar su propio usuario"
             }), 400
 
+
         conn = get_db()
         cur = conn.cursor()
+
 
         cur.execute("""
             SELECT username
             FROM usuarios
             WHERE id=%s
-        """, (user_id,))
+        """, (
+            user_id,
+        ))
+
 
         usuario = cur.fetchone()
+
 
         if not usuario:
 
@@ -2491,23 +2745,30 @@ def eliminar_usuario():
                 "error": "Usuario no existe"
             }), 404
 
+
         cur.execute("""
             DELETE FROM usuarios
             WHERE id=%s
-        """, (user_id,))
+        """, (
+            user_id,
+        ))
+
 
         conn.commit()
 
         cur.close()
         conn.close()
 
+
         registrar_movimiento(
             f"Eliminó usuario {usuario[0]}"
         )
 
+
         return jsonify({
             "ok": True
         })
+
 
     except Exception as e:
 
@@ -2530,6 +2791,7 @@ def exportar_excel():
         conn = get_db()
         cur = conn.cursor()
 
+
         cur.execute("""
             SELECT
                 accion,
@@ -2540,37 +2802,45 @@ def exportar_excel():
             ORDER BY id DESC
         """)
 
+
         data = cur.fetchall()
+
 
         cur.close()
         conn.close()
 
-        wb = Workbook()
 
-        ws = wb.active
-        ws.title = "Historial"
+        workbook = Workbook()
 
-        ws.append([
+        worksheet = workbook.active
+        worksheet.title = "Historial"
+
+
+        worksheet.append([
             "Acción",
             "Usuario",
             "Fecha",
             "Observación"
         ])
 
+
         for row in data:
 
-            ws.append(row)
+            worksheet.append(row)
 
-        ws.column_dimensions["A"].width = 45
-        ws.column_dimensions["B"].width = 20
-        ws.column_dimensions["C"].width = 22
-        ws.column_dimensions["D"].width = 60
+
+        worksheet.column_dimensions["A"].width = 45
+        worksheet.column_dimensions["B"].width = 20
+        worksheet.column_dimensions["C"].width = 22
+        worksheet.column_dimensions["D"].width = 60
+
 
         file = io.BytesIO()
 
-        wb.save(file)
+        workbook.save(file)
 
         file.seek(0)
+
 
         return send_file(
             file,
@@ -2582,6 +2852,7 @@ def exportar_excel():
             )
         )
 
+
     except Exception as e:
 
         return jsonify({
@@ -2590,27 +2861,23 @@ def exportar_excel():
 
 
 # ============================================================
-# HEALTH CHECK
-# ============================================================
-
-@app.route("/health")
-def health():
-
-    return jsonify({
-        "status": "ok"
-    })
-
-
-# ============================================================
 # ARRANQUE
 # ============================================================
 
 if __name__ == "__main__":
 
-    # En Render la BD debe existir y DATABASE_URL
-    # debe estar configurada.
+    try:
 
-    init_db()
+        init_db()
+
+    except Exception as e:
+
+        print(
+            f"ERROR inicializando base de datos: {e}"
+        )
+
+        raise
+
 
     app.run(
         host="0.0.0.0",
@@ -2622,4 +2889,3 @@ if __name__ == "__main__":
         ),
         debug=False
     )
-```

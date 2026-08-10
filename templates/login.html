@@ -3,270 +3,167 @@
 
 <head>
 
-<meta charset="UTF-8">
+    <meta charset="UTF-8">
 
-<meta name="viewport"
-      content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>ERP Flota PRO - Login</title>
+    <title>ERP Flota PRO - Login</title>
 
-<style>
+    <style>
 
-*{
-    box-sizing:border-box;
-}
+        * {
+            box-sizing: border-box;
+        }
 
-body{
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(
+                135deg,
+                #111827,
+                #1e3a8a
+            );
 
-    font-family:
-        'Segoe UI',
-        Arial,
-        sans-serif;
+            min-height: 100vh;
 
-    background:
-        linear-gradient(
-            135deg,
-            #111827,
-            #1e3a8a
-        );
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-    display:flex;
+        .box {
 
-    justify-content:center;
+            width: 350px;
+            max-width: 90%;
 
-    align-items:center;
+            background: white;
 
-    min-height:100vh;
+            padding: 30px;
 
-    margin:0;
+            border-radius: 16px;
 
-    padding:20px;
+            box-shadow:
+                0 20px 50px rgba(0,0,0,.25);
+        }
 
-}
+        h2 {
 
-.box{
+            margin-top: 0;
 
-    background:white;
+            text-align: center;
 
-    color:#111827;
+            color: #111827;
+        }
 
-    padding:35px;
+        .subtitle {
 
-    border-radius:18px;
+            text-align: center;
 
-    width:100%;
+            color: #6b7280;
 
-    max-width:360px;
+            margin-bottom: 25px;
+        }
 
-    box-shadow:
-        0 20px 50px
-        rgba(0,0,0,.25);
+        input {
 
-}
+            width: 100%;
 
-.logo{
+            padding: 12px;
 
-    text-align:center;
+            margin: 8px 0;
 
-    font-size:26px;
+            border: 1px solid #d1d5db;
 
-    font-weight:bold;
+            border-radius: 8px;
 
-    margin-bottom:5px;
+            font-size: 15px;
+        }
 
-}
+        button {
 
-.subtitle{
+            width: 100%;
 
-    text-align:center;
+            padding: 12px;
 
-    color:#6b7280;
+            margin-top: 12px;
 
-    margin-bottom:25px;
+            border: none;
 
-}
+            border-radius: 8px;
 
-label{
+            background: #2563eb;
 
-    display:block;
+            color: white;
 
-    font-size:14px;
+            font-size: 16px;
 
-    font-weight:600;
+            cursor: pointer;
+        }
 
-    margin-top:12px;
+        button:hover {
 
-}
+            background: #1d4ed8;
+        }
 
-input{
+        .error {
 
-    width:100%;
+            background: #fee2e2;
 
-    padding:11px;
+            color: #b91c1c;
 
-    margin-top:5px;
+            padding: 10px;
 
-    border:1px solid #d1d5db;
+            border-radius: 8px;
 
-    border-radius:8px;
+            font-size: 14px;
+        }
 
-    outline:none;
-
-}
-
-input:focus{
-
-    border-color:#2563eb;
-
-    box-shadow:
-        0 0 0 3px
-        rgba(37,99,235,.1);
-
-}
-
-button{
-
-    width:100%;
-
-    padding:12px;
-
-    margin-top:20px;
-
-    background:#2563eb;
-
-    color:white;
-
-    border:none;
-
-    border-radius:8px;
-
-    font-size:16px;
-
-    font-weight:600;
-
-    cursor:pointer;
-
-}
-
-button:hover{
-
-    background:#1d4ed8;
-
-}
-
-.error{
-
-    color:#991b1b;
-
-    background:#fee2e2;
-
-    border-radius:8px;
-
-    padding:10px;
-
-    font-size:14px;
-
-}
-
-.footer{
-
-    text-align:center;
-
-    color:#9ca3af;
-
-    font-size:12px;
-
-    margin-top:20px;
-
-}
-
-</style>
+    </style>
 
 </head>
 
-
 <body>
 
+    <form
+        method="POST"
+        action="/login"
+        class="box"
+    >
 
-<form
-    method="POST"
-    class="box"
->
+        <h2>🚛 ERP Flota PRO</h2>
 
+        <div class="subtitle">
+            Sistema de control de flota
+        </div>
 
-<div class="logo">
+        {% if error %}
 
-    🚛 ERP Flota PRO
+            <div class="error">
+                {{ error }}
+            </div>
 
-</div>
+        {% endif %}
 
+        <input
+            name="username"
+            placeholder="Usuario"
+            autocomplete="username"
+            required
+        >
 
-<div class="subtitle">
+        <input
+            name="password"
+            type="password"
+            placeholder="Contraseña"
+            autocomplete="current-password"
+            required
+        >
 
-    Sistema de gestión de flota
+        <button type="submit">
+            Entrar
+        </button>
 
-</div>
-
-
-{% if error %}
-
-<div class="error">
-
-    {{ error }}
-
-</div>
-
-{% endif %}
-
-
-<label for="username">
-
-    Usuario
-
-</label>
-
-<input
-    id="username"
-    name="username"
-    type="text"
-    placeholder="Ingrese su usuario"
-    autocomplete="username"
-    required
->
-
-
-<label for="password">
-
-    Contraseña
-
-</label>
-
-<input
-    id="password"
-    name="password"
-    type="password"
-    placeholder="Ingrese su contraseña"
-    autocomplete="current-password"
-    required
->
-
-
-<button type="submit">
-
-    Ingresar
-
-</button>
-
-
-<div class="footer">
-
-    ERP Flota PRO
-
-</div>
-
-
-</form>
-
+    </form>
 
 </body>
 
