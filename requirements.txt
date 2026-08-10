@@ -1,5 +1,5 @@
 Flask
 psycopg2-binary
 openpyxl
-Werkzeug
 gunicorn
+Werkzeug
