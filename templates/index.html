@@ -1,404 +1,3009 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
+
 <head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
 <title>ERP Flota PRO</title>
 
 <style>
-body{font-family:'Segoe UI';background:#f4f6fb;margin:0}
 
-header{background:#111827;color:white;padding:15px 25px;display:flex;justify-content:space-between}
+*{
+    box-sizing:border-box;
+}
 
-.container{padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+body{
+    font-family:'Segoe UI',Arial,sans-serif;
+    background:#f4f6fb;
+    margin:0;
+    color:#111827;
+}
 
-.card{background:white;padding:20px;border-radius:15px;box-shadow:0 4px 15px rgba(0,0,0,0.08)}
+/* HEADER */
 
-button{padding:6px 10px;border:none;border-radius:6px;cursor:pointer;margin:2px}
-.btn-blue{background:#2563eb;color:white}
-.btn-green{background:#16a34a;color:white}
-.btn-red{background:#dc2626;color:white}
-.btn-gray{background:#6b7280;color:white}
+header{
+    background:#111827;
+    color:white;
+    padding:15px 25px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:20px;
+}
 
-input,select{width:100%;padding:6px;margin:4px 0;border-radius:6px;border:1px solid #ddd}
+.logo{
+    font-size:20px;
+    font-weight:bold;
+}
+
+.user-info{
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+/* CONTENEDORES */
+
+.container{
+    padding:20px;
+    display:grid;
+    grid-template-columns:
+        repeat(auto-fit,minmax(280px,1fr));
+    gap:20px;
+}
+
+.card{
+    background:white;
+    padding:20px;
+    border-radius:15px;
+    box-shadow:
+        0 4px 15px rgba(0,0,0,0.08);
+}
+
+.card h3{
+    margin-top:0;
+}
+
+/* BOTONES */
+
+button{
+    padding:8px 12px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    margin:2px;
+    font-weight:500;
+}
+
+button:hover{
+    opacity:.9;
+}
+
+.btn-blue{
+    background:#2563eb;
+    color:white;
+}
+
+.btn-green{
+    background:#16a34a;
+    color:white;
+}
+
+.btn-red{
+    background:#dc2626;
+    color:white;
+}
+
+.btn-gray{
+    background:#6b7280;
+    color:white;
+}
+
+.btn-orange{
+    background:#f59e0b;
+    color:white;
+}
+
+/* FORMULARIOS */
+
+input,
+select{
+    width:100%;
+    padding:9px;
+    margin:5px 0;
+    border-radius:6px;
+    border:1px solid #d1d5db;
+    background:white;
+}
+
+textarea{
+    width:100%;
+    padding:9px;
+    margin:5px 0;
+    border-radius:6px;
+    border:1px solid #d1d5db;
+    resize:vertical;
+}
+
+/* DASHBOARD */
 
 .gridDash{
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
-gap:10px;
-margin-top:8px;
+    display:grid;
+    grid-template-columns:
+        repeat(auto-fit,minmax(140px,1fr));
+    gap:10px;
+    margin-top:8px;
 }
 
 .box{
-padding:12px;
-border-radius:12px;
-color:white;
-text-align:center;
-transition:0.2s;
+    padding:14px;
+    border-radius:12px;
+    color:white;
+    text-align:center;
+    transition:.2s;
 }
 
-.box:hover{ transform:scale(1.05); }
+.box:hover{
+    transform:scale(1.03);
+}
 
-.disponible{ background:#16a34a; }
-.ocupado{ background:#f59e0b; }
-.inhabilitado{ background:#dc2626; }
+.disponible{
+    background:#16a34a;
+}
 
-.box h5{ margin:0; font-size:13px; }
-.box p{ margin:5px 0 0; font-size:26px; font-weight:bold; }
+.ocupado{
+    background:#f59e0b;
+}
+
+.inhabilitado{
+    background:#dc2626;
+}
+
+.pendiente{
+    background:#7c3aed;
+}
+
+.box h5{
+    margin:0;
+    font-size:13px;
+}
+
+.box p{
+    margin:5px 0 0;
+    font-size:26px;
+    font-weight:bold;
+}
+
+/* ASIGNACIONES */
 
 .asignaciones{
-margin-top:10px;
-background:#f9fafb;
-padding:10px;
-border-radius:10px;
+    margin-top:10px;
+    background:#f9fafb;
+    padding:10px;
+    border-radius:10px;
 }
+
+/* LISTAS */
+
+ul{
+    padding-left:20px;
+}
+
+li{
+    margin-bottom:8px;
+}
+
+/* ESTADOS */
+
+.estado{
+    font-weight:bold;
+}
+
+.estado-disponible{
+    color:#16a34a;
+}
+
+.estado-en_ruta{
+    color:#f59e0b;
+}
+
+.estado-ocupada{
+    color:#f59e0b;
+}
+
+.estado-inhabilitado{
+    color:#dc2626;
+}
+
+/* SOLICITUDES */
+
+.solicitud{
+    border:1px solid #e5e7eb;
+    padding:12px;
+    border-radius:10px;
+    margin-bottom:10px;
+    background:#fafafa;
+}
+
+.badge{
+    display:inline-block;
+    padding:4px 8px;
+    border-radius:20px;
+    color:white;
+    font-size:12px;
+    font-weight:bold;
+}
+
+.badge-pendiente{
+    background:#7c3aed;
+}
+
+.badge-aprobada{
+    background:#16a34a;
+}
+
+.badge-rechazada{
+    background:#dc2626;
+}
+
+/* ALERTAS */
+
+.alerta{
+    padding:10px;
+    border-radius:8px;
+    margin-bottom:10px;
+}
+
+.alerta-roja{
+    background:#fee2e2;
+    color:#991b1b;
+}
+
+.alerta-amarilla{
+    background:#fef3c7;
+    color:#92400e;
+}
+
+.alerta-verde{
+    background:#dcfce7;
+    color:#166534;
+}
+
+/* RESPONSIVE */
+
+@media(max-width:700px){
+
+    header{
+        flex-direction:column;
+        align-items:flex-start;
+    }
+
+    .user-info{
+        width:100%;
+        justify-content:space-between;
+    }
+
+    .container{
+        padding:10px;
+    }
+
+}
+
 </style>
+
 </head>
 
 <body>
 
+
+<!-- ======================================================
+     HEADER
+======================================================= -->
+
 <header>
-<div>🚛 ERP Flota PRO</div>
-<div style="display:flex;gap:10px;align-items:center;">
-<span>{{user.username}} ({{user.rol}})</span>
-<button onclick="logout()" class="btn-red">Cerrar sesión</button>
-</div>
+
+    <div class="logo">
+        🚛 ERP Flota PRO
+    </div>
+
+    <div class="user-info">
+
+        <span>
+            {{ user.username }}
+            —
+            {{ user.rol }}
+        </span>
+
+        <button
+            onclick="logout()"
+            class="btn-red">
+            Cerrar sesión
+        </button>
+
+    </div>
+
 </header>
 
+
 <script>
-const userRol = "{{user.rol}}";
+
+const userRol = "{{ user.rol }}";
+
+const userId = {{ user.id }};
+
 </script>
 
-<!-- DASHBOARD -->
+
+<!-- ======================================================
+     DASHBOARD
+======================================================= -->
+
 <div class="container">
+
 <div class="card">
+
 <h3>📊 Dashboard</h3>
 
 <div id="alertas"></div>
 
+
+<!-- CONDUCTORES -->
+
 <h4>👷 Conductores</h4>
+
 <div class="gridDash">
-<div class="box disponible"><h5>Disponibles</h5><p id="cd"></p></div>
-<div class="box ocupado"><h5>En ruta</h5><p id="co"></p></div>
+
+<div class="box disponible">
+
+<h5>Disponibles</h5>
+
+<p id="cd">0</p>
+
 </div>
 
-<h4 style="margin-top:15px;">🚛 Unidades</h4>
-<div class="gridDash">
-<div class="box disponible"><h5>Disponibles</h5><p id="ud"></p></div>
-<div class="box ocupado"><h5>Ocupadas</h5><p id="uo"></p></div>
-<div class="box inhabilitado"><h5>Inhabilitadas</h5><p id="ui"></p></div>
+
+<div class="box ocupado">
+
+<h5>En ruta</h5>
+
+<p id="co">0</p>
+
 </div>
 
-<h4 style="margin-top:15px;">🔗 Asignaciones activas</h4>
+</div>
+
+
+<!-- UNIDADES -->
+
+<h4 style="margin-top:15px;">
+🚛 Unidades
+</h4>
+
+<div class="gridDash">
+
+<div class="box disponible">
+
+<h5>Disponibles</h5>
+
+<p id="ud">0</p>
+
+</div>
+
+
+<div class="box ocupado">
+
+<h5>Ocupadas</h5>
+
+<p id="uo">0</p>
+
+</div>
+
+
+<div class="box inhabilitado">
+
+<h5>Inhabilitadas</h5>
+
+<p id="ui">0</p>
+
+</div>
+
+</div>
+
+
+<!-- ASIGNACIONES -->
+
+<h4 style="margin-top:15px;">
+🔗 Asignaciones activas
+</h4>
+
 <div class="asignaciones">
-<ul id="asignaciones"></ul>
+
+<ul id="asignaciones">
+
+<li>
+Cargando...
+</li>
+
+</ul>
+
 </div>
 
 </div>
+
 </div>
 
-<!-- LISTAS -->
+
+<!-- ======================================================
+     LISTAS
+======================================================= -->
+
 <div class="container">
-<div class="card">
-<h3>Conductores</h3>
-<ul id="conductores"></ul>
-</div>
+
 
 <div class="card">
-<h3>Unidades</h3>
-<ul id="unidades"></ul>
-</div>
-</div>
 
-<!-- CREAR -->
-<div class="container" id="seccion-crear">
-<div class="card">
-<h3>Crear</h3>
+<h3>👷 Conductores</h3>
 
-<input id="nombre" placeholder="Conductor">
-<button onclick="crearConductor()" class="btn-green">Agregar</button>
+<ul id="conductores">
 
-<input id="placa" placeholder="Unidad">
-<button onclick="crearUnidad()" class="btn-green">Agregar</button>
+<li>
+Cargando...
+</li>
+
+</ul>
 
 </div>
-</div>
 
-<!-- EDITAR -->
-<div class="container" id="seccion-editar">
-<div class="card">
-<h3>Editar Conductores</h3>
-<select id="editConductorSelect"></select>
-<input id="editConductorNombre">
-<button onclick="editarConductor()" class="btn-blue">Guardar</button>
-<button onclick="eliminarConductor()" class="btn-red">Eliminar</button>
-</div>
 
 <div class="card">
-<h3>Editar Unidades</h3>
-<select id="editUnidadSelect"></select>
-<input id="editUnidadPlaca">
-<button onclick="editarUnidad()" class="btn-blue">Guardar</button>
-<button onclick="eliminarUnidad()" class="btn-red">Eliminar</button>
-</div>
+
+<h3>🚛 Unidades</h3>
+
+<ul id="unidades">
+
+<li>
+Cargando...
+</li>
+
+</ul>
+
 </div>
 
-<!-- OPERACIONES -->
-<div class="container" id="seccion-operaciones">
+
+</div>
+
+
+<!-- ======================================================
+     SOLICITUD OPERADOR
+======================================================= -->
+
+<div
+    class="container"
+    id="seccion-solicitud"
+>
+
 <div class="card">
-<h3>Asignar</h3>
+
+<h3>
+📝 Solicitar asignación
+</h3>
+
+<p>
+Seleccione un conductor y una unidad disponibles.
+La asignación deberá ser aprobada por un supervisor
+o administrador.
+</p>
+
+
+<label>
+Conductor
+</label>
+
+<select id="solicitudConductor">
+
+<option value="">
+-- Seleccionar conductor --
+</option>
+
+</select>
+
+
+<label>
+Unidad
+</label>
+
+<select id="solicitudUnidad">
+
+<option value="">
+-- Seleccionar unidad --
+</option>
+
+</select>
+
+
+<label>
+Observación
+</label>
+
+<textarea
+    id="solicitudObservacion"
+    rows="3"
+    placeholder="Observación opcional">
+</textarea>
+
+
+<button
+    onclick="solicitarAsignacion()"
+    class="btn-blue">
+
+Enviar solicitud
+
+</button>
+
+</div>
+
+</div>
+
+
+<!-- ======================================================
+     MIS SOLICITUDES
+======================================================= -->
+
+<div
+    class="container"
+    id="seccion-mis-solicitudes"
+>
+
+<div class="card">
+
+<h3>
+📋 Mis solicitudes
+</h3>
+
+<div id="misSolicitudes">
+
+Cargando...
+
+</div>
+
+</div>
+
+</div>
+
+
+<!-- ======================================================
+     CREAR
+======================================================= -->
+
+<div
+    class="container"
+    id="seccion-crear"
+>
+
+<div class="card">
+
+<h3>
+➕ Crear conductor
+</h3>
+
+<input
+    id="nombre"
+    placeholder="Nombre del conductor"
+>
+
+<button
+    onclick="crearConductor()"
+    class="btn-green">
+
+Agregar conductor
+
+</button>
+
+</div>
+
+
+<div class="card">
+
+<h3>
+➕ Crear unidad
+</h3>
+
+<input
+    id="placa"
+    placeholder="Placa de unidad"
+>
+
+<button
+    onclick="crearUnidad()"
+    class="btn-green">
+
+Agregar unidad
+
+</button>
+
+</div>
+
+</div>
+
+
+<!-- ======================================================
+     EDITAR
+======================================================= -->
+
+<div
+    class="container"
+    id="seccion-editar"
+>
+
+
+<div class="card">
+
+<h3>
+✏️ Editar conductor
+</h3>
+
+<select id="editConductorSelect">
+
+<option value="">
+-- Seleccionar --
+</option>
+
+</select>
+
+<input
+    id="editConductorNombre"
+    placeholder="Nuevo nombre"
+>
+
+<button
+    onclick="cargarConductorEditar()"
+    class="btn-gray">
+
+Cargar
+
+</button>
+
+<button
+    onclick="editarConductor()"
+    class="btn-blue">
+
+Guardar
+
+</button>
+
+<button
+    onclick="eliminarConductor()"
+    class="btn-red">
+
+Eliminar
+
+</button>
+
+</div>
+
+
+<div class="card">
+
+<h3>
+✏️ Editar unidad
+</h3>
+
+<select id="editUnidadSelect">
+
+<option value="">
+-- Seleccionar --
+</option>
+
+</select>
+
+<input
+    id="editUnidadPlaca"
+    placeholder="Nueva placa"
+>
+
+<button
+    onclick="cargarUnidadEditar()"
+    class="btn-gray">
+
+Cargar
+
+</button>
+
+<button
+    onclick="editarUnidad()"
+    class="btn-blue">
+
+Guardar
+
+</button>
+
+<button
+    onclick="eliminarUnidad()"
+    class="btn-red">
+
+Eliminar
+
+</button>
+
+</div>
+
+</div>
+
+
+<!-- ======================================================
+     OPERACIONES
+======================================================= -->
+
+<div
+    class="container"
+    id="seccion-operaciones"
+>
+
+
+<div class="card">
+
+<h3>
+🔗 Asignar directamente
+</h3>
+
 <select id="conductorSelect"></select>
+
 <select id="unidadSelect"></select>
-<button onclick="asignar()" class="btn-blue">Asignar</button>
+
+<button
+    onclick="asignar()"
+    class="btn-blue">
+
+Asignar
+
+</button>
+
 </div>
 
+
 <div class="card">
-<h3>Finalizar</h3>
+
+<h3>
+🏁 Finalizar asignación
+</h3>
+
 <select id="conductorFinal"></select>
+
 <select id="unidadFinal"></select>
-<button onclick="finalizar()" class="btn-gray">Finalizar</button>
-</div>
+
+<button
+    onclick="finalizar()"
+    class="btn-gray">
+
+Finalizar
+
+</button>
+
 </div>
 
-<!-- INHABILITAR -->
-<div class="container" id="bloque-inhabilitar">
+</div>
+
+
+<!-- ======================================================
+     SOLICITUDES ADMIN / SUPERVISOR
+======================================================= -->
+
+<div
+    class="container"
+    id="seccion-solicitudes-admin"
+>
+
 <div class="card">
-<h3>Inhabilitar / Habilitar Unidad</h3>
 
-<select id="unidadEstado"></select>
+<h3>
+📋 Solicitudes de asignación
+</h3>
+
+<div id="listaSolicitudesAdmin">
+
+Cargando...
+
+</div>
+
+</div>
+
+</div>
+
+
+<!-- ======================================================
+     INHABILITAR
+======================================================= -->
+
+<div
+    class="container"
+    id="bloque-inhabilitar"
+>
+
+<div class="card">
+
+<h3>
+🔧 Habilitar / Inhabilitar unidad
+</h3>
+
+
+<select id="unidadEstado">
+
+<option value="">
+-- Seleccionar unidad --
+</option>
+
+</select>
+
 
 <select id="estadoUnidad">
-<option value="disponible">Habilitar</option>
-<option value="inhabilitado">Inhabilitar</option>
+
+<option value="disponible">
+Habilitar
+</option>
+
+<option value="inhabilitado">
+Inhabilitar
+</option>
+
 </select>
 
-<input id="obsUnidad" placeholder="Observación">
 
-<button onclick="cambiarEstadoUnidad()" class="btn-red">Aplicar</button>
-</div>
+<input
+    id="obsUnidad"
+    placeholder="Observación"
+>
+
+
+<button
+    onclick="cambiarEstadoUnidad()"
+    class="btn-red">
+
+Aplicar
+
+</button>
+
 </div>
 
-<!-- HISTORIAL -->
-<div class="container" id="seccion-historial">
+</div>
+
+
+<!-- ======================================================
+     HISTORIAL
+======================================================= -->
+
+<div
+    class="container"
+    id="seccion-historial"
+>
+
 <div class="card">
-<h3>Historial</h3>
 
-<input type="date" id="filtroFecha">
-<input placeholder="Usuario" id="filtroUsuario">
-<button onclick="filtrarHistorial()" class="btn-blue">Filtrar</button>
-<button onclick="exportarExcel()" class="btn-green">Exportar Excel</button>
+<h3>
+📜 Historial
+</h3>
 
-<ul id="movimientos"></ul>
+
+<input
+    type="date"
+    id="filtroFecha"
+>
+
+
+<input
+    placeholder="Usuario"
+    id="filtroUsuario"
+>
+
+
+<button
+    onclick="filtrarHistorial()"
+    class="btn-blue">
+
+Filtrar
+
+</button>
+
+
+<button
+    onclick="cargarHistorial()"
+    class="btn-gray">
+
+Mostrar todo
+
+</button>
+
+
+<button
+    onclick="exportarExcel()"
+    class="btn-green">
+
+Exportar Excel
+
+</button>
+
+
+<ul id="movimientos">
+
+<li>
+Cargando...
+</li>
+
+</ul>
+
 </div>
+
 </div>
 
-<!-- USUARIOS -->
-<div class="container" id="seccion-usuarios">
+
+<!-- ======================================================
+     USUARIOS
+======================================================= -->
+
+<div
+    class="container"
+    id="seccion-usuarios"
+>
+
 <div class="card">
-<h3>Usuarios</h3>
 
-<input id="u_id" type="hidden">
-<input id="u_user" placeholder="Usuario">
-<input id="u_pass" placeholder="Password">
+<h3>
+👤 Usuarios
+</h3>
+
+
+<input
+    id="u_id"
+    type="hidden"
+>
+
+
+<input
+    id="u_user"
+    placeholder="Usuario"
+>
+
+
+<input
+    id="u_pass"
+    type="password"
+    placeholder="Contraseña"
+>
+
 
 <select id="u_rol">
-<option value="admin">admin</option>
-<option value="supervisor">supervisor</option>
-<option value="user">user</option>
+
+<option value="admin">
+admin
+</option>
+
+<option value="supervisor">
+supervisor
+</option>
+
+<option value="operador">
+operador
+</option>
+
 </select>
 
-<button onclick="crearUsuario()" class="btn-green">Crear</button>
-<button onclick="editarUsuarioGuardar()" class="btn-blue">Editar</button>
-<button onclick="eliminarUsuarioSeleccion()" class="btn-red">Eliminar</button>
-<button onclick="cancelarEdicion()" class="btn-gray">Limpiar</button>
 
-<ul id="listaUsuarios"></ul>
+<button
+    onclick="crearUsuario()"
+    class="btn-green">
+
+Crear
+
+</button>
+
+
+<button
+    onclick="editarUsuarioGuardar()"
+    class="btn-blue">
+
+Editar
+
+</button>
+
+
+<button
+    onclick="eliminarUsuarioSeleccion()"
+    class="btn-red">
+
+Eliminar
+
+</button>
+
+
+<button
+    onclick="cancelarEdicion()"
+    class="btn-gray">
+
+Limpiar
+
+</button>
+
+
+<hr>
+
+
+<ul id="listaUsuarios">
+
+<li>
+Cargando...
+</li>
+
+</ul>
+
 </div>
+
 </div>
+
 
 <script>
 
-// API
-function api(url,data={}){
-return fetch(url,{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify(data)
-}).then(r=>{
-if(!r.ok) throw "Error servidor";
-return r;
-}).catch(e=>alert(e));
+/* ==========================================================
+   UTILIDADES
+========================================================== */
+
+function $(id){
+
+    return document.getElementById(id);
+
 }
 
-function logout(){ location.href="/logout"; }
 
-// limpiar
+function logout(){
+
+    location.href="/logout";
+
+}
+
+
 function limpiarTodo(){
-nombre.value="";
-placa.value="";
-obsUnidad.value="";
-}
 
-// colores
-function colorEstado(e){
-if(e==="disponible") return "green";
-if(e==="en_ruta"||e==="ocupada") return "orange";
-if(e==="inhabilitado") return "red";
-return "black";
-}
-
-// select
-function actualizarSelect(select, lista, key, label){
-let v = select.value;
-select.innerHTML = `<option value="">--</option>` + lista.map(i=>`<option value="${i[key]}">${i[label]}</option>`).join("");
-if(v) select.value=v;
-}
-
-// cargar
-function cargar(){
-
-fetch("/datos").then(r=>r.json()).then(d=>{
-
-cd.innerText=d.stats.conductores_disponibles;
-co.innerText=d.stats.conductores_ocupados;
-ud.innerText=d.stats.unidades_disponibles;
-uo.innerText=d.stats.unidades_ocupadas;
-ui.innerText=d.stats.unidades_inhabilitadas;
-
-conductores.innerHTML=d.conductores.map(c=>`
-<li>${c.nombre} - <span style="color:${colorEstado(c.estado)}">${c.estado}</span></li>`).join("");
-
-unidades.innerHTML=d.unidades.map(u=>`
-<li>${u.placa} - <span style="color:${colorEstado(u.estado)}">${u.estado}</span></li>`).join("");
-
-asignaciones.innerHTML = d.asignaciones.length
-? d.asignaciones.map(a=>`<li>👷 ${a.conductor} → 🚛 ${a.unidad}</li>`).join("")
-: "<li>No hay asignaciones activas</li>";
-
-actualizarSelect(conductorSelect,d.conductores,"id","nombre");
-actualizarSelect(unidadSelect,d.unidades,"id","placa");
-actualizarSelect(conductorFinal,d.conductores,"id","nombre");
-actualizarSelect(unidadFinal,d.unidades,"id","placa");
-actualizarSelect(editConductorSelect,d.conductores,"id","nombre");
-actualizarSelect(editUnidadSelect,d.unidades,"id","placa");
-actualizarSelect(unidadEstado,d.unidades,"id","placa");
-
-// ALERTAS
-let alertasHTML="";
-if(d.stats.unidades_inhabilitadas>0){
-alertasHTML+=`<div style="background:#fee2e2;padding:10px;border-radius:8px;margin-bottom:10px;">
-🚨 ${d.stats.unidades_inhabilitadas} unidades inhabilitadas
-</div>`;
-}
-document.getElementById("alertas").innerHTML=alertasHTML;
-
-});
-
-if(userRol==="admin"){
-
-fetch("/movimientos").then(r=>r.json()).then(d=>{
-movimientos.innerHTML = d.map(m=>`
-<li>
-<b>${m.accion}</b><br>
-👤 ${m.usuario}<br>
-🕒 ${m.fecha}
-${m.obs ? `<br>📝 ${m.obs}` : ""}
-</li>
-`).join("");
-});
-
-fetch("/usuarios").then(r=>r.json()).then(d=>{
-listaUsuarios.innerHTML=d.map(u=>`
-<li>${u.username} (${u.rol})
-<button onclick="editarUsuario(${u.id},'${u.username}','${u.rol}')">Seleccionar</button>
-</li>`).join("");
-});
+    $("nombre").value="";
+    $("placa").value="";
+    $("obsUnidad").value="";
+    $("solicitudObservacion").value="";
 
 }
 
+
+/* ==========================================================
+   API POST
+========================================================== */
+
+async function api(url,data={}){
+
+    try{
+
+        const response = await fetch(
+            url,
+            {
+                method:"POST",
+                headers:{
+                    "Content-Type":
+                        "application/json"
+                },
+                body:JSON.stringify(data)
+            }
+        );
+
+
+        const result =
+            await response.json();
+
+
+        if(!response.ok){
+
+            throw new Error(
+                result.error ||
+                "Error del servidor"
+            );
+
+        }
+
+
+        return result;
+
+    }catch(error){
+
+        alert(error.message);
+
+        throw error;
+
+    }
+
 }
 
-// acciones
-function crearConductor(){ api("/crear_conductor",{nombre:nombre.value}).then(()=>{limpiarTodo();cargar();}); }
-function crearUnidad(){ api("/crear_unidad",{placa:placa.value}).then(()=>{limpiarTodo();cargar();}); }
 
-function editarConductor(){ api("/editar_conductor",{id:editConductorSelect.value,nombre:editConductorNombre.value}).then(()=>cargar()); }
-function eliminarConductor(){ api("/eliminar_conductor",{id:editConductorSelect.value}).then(()=>cargar()); }
+/* ==========================================================
+   ESTADOS
+========================================================== */
 
-function editarUnidad(){ api("/editar_unidad",{id:editUnidadSelect.value,placa:editUnidadPlaca.value}).then(()=>cargar()); }
-function eliminarUnidad(){ api("/eliminar_unidad",{id:editUnidadSelect.value}).then(()=>cargar()); }
+function textoEstado(estado){
 
-function asignar(){ api("/asignar",{conductor_id:conductorSelect.value,unidad_id:unidadSelect.value}).then(()=>cargar()); }
-function finalizar(){ api("/finalizar",{conductor_id:conductorFinal.value,unidad_id:unidadFinal.value}).then(()=>cargar()); }
+    const estados = {
 
-function cambiarEstadoUnidad(){
-api("/cambiar_estado_unidad",{
-unidad_id: unidadEstado.value,
-estado: estadoUnidad.value,
-observacion: obsUnidad.value
-}).then(()=>{limpiarTodo();cargar();});
+        disponible:"Disponible",
+
+        en_ruta:"En ruta",
+
+        ocupada:"Ocupada",
+
+        inhabilitado:"Inhabilitada"
+
+    };
+
+    return estados[estado] || estado;
+
 }
 
-// usuarios
-function editarUsuario(id,u,r){ u_id.value=id;u_user.value=u;u_rol.value=r; }
-function cancelarEdicion(){ u_id.value="";u_user.value="";u_pass.value="";u_rol.value="user"; }
 
-function crearUsuario(){
-if(!u_user.value||!u_pass.value) return alert("Datos incompletos");
-api("/crear_usuario",{username:u_user.value,password:u_pass.value,rol:u_rol.value}).then(()=>{cancelarEdicion();cargar();});
+function claseEstado(estado){
+
+    return "estado-" + estado;
+
 }
 
-function editarUsuarioGuardar(){
-if(!u_id.value) return alert("Seleccione usuario");
-api("/editar_usuario",{id:u_id.value,username:u_user.value,password:u_pass.value,rol:u_rol.value}).then(()=>{cancelarEdicion();cargar();});
+
+/* ==========================================================
+   SELECTS
+========================================================== */
+
+function actualizarSelect(
+    select,
+    lista,
+    key,
+    label
+){
+
+    if(!select){
+        return;
+    }
+
+
+    const valorActual =
+        select.value;
+
+
+    select.innerHTML =
+        `<option value="">
+        -- Seleccionar --
+        </option>`;
+
+
+    lista.forEach(item => {
+
+        const option =
+            document.createElement("option");
+
+
+        option.value =
+            item[key];
+
+
+        option.textContent =
+            item[label];
+
+
+        select.appendChild(
+            option
+        );
+
+    });
+
+
+    if(
+        valorActual &&
+        lista.some(
+            x =>
+                String(x[key]) ===
+                String(valorActual)
+        )
+    ){
+
+        select.value =
+            valorActual;
+
+    }
+
 }
 
-function eliminarUsuarioSeleccion(){
-if(!u_id.value) return alert("Seleccione usuario");
-if(!confirm("Eliminar?")) return;
-api("/eliminar_usuario",{id:u_id.value}).then(()=>{cancelarEdicion();cargar();});
+
+/* ==========================================================
+   CARGAR DASHBOARD
+========================================================== */
+
+async function cargar(){
+
+    try{
+
+        const response =
+            await fetch("/datos");
+
+
+        const d =
+            await response.json();
+
+
+        if(!response.ok){
+
+            throw new Error(
+                d.error ||
+                "No se pudieron cargar los datos"
+            );
+
+        }
+
+
+        /* ESTADÍSTICAS */
+
+        $("cd").innerText =
+            d.stats.conductores_disponibles;
+
+
+        $("co").innerText =
+            d.stats.conductores_ocupados;
+
+
+        $("ud").innerText =
+            d.stats.unidades_disponibles;
+
+
+        $("uo").innerText =
+            d.stats.unidades_ocupadas;
+
+
+        $("ui").innerText =
+            d.stats.unidades_inhabilitadas;
+
+
+        /* CONDUCTORES */
+
+        $("conductores").innerHTML =
+            d.conductores.length
+
+            ?
+
+            d.conductores.map(c => `
+
+                <li>
+
+                    <b>${escapeHtml(c.nombre)}</b>
+
+                    -
+
+                    <span
+                        class="estado ${claseEstado(c.estado)}">
+
+                        ${textoEstado(c.estado)}
+
+                    </span>
+
+                </li>
+
+            `).join("")
+
+            :
+
+            "<li>No hay conductores</li>";
+
+
+        /* UNIDADES */
+
+        $("unidades").innerHTML =
+            d.unidades.length
+
+            ?
+
+            d.unidades.map(u => `
+
+                <li>
+
+                    <b>${escapeHtml(u.placa)}</b>
+
+                    -
+
+                    <span
+                        class="estado ${claseEstado(u.estado)}">
+
+                        ${textoEstado(u.estado)}
+
+                    </span>
+
+                </li>
+
+            `).join("")
+
+            :
+
+            "<li>No hay unidades</li>";
+
+
+        /* ASIGNACIONES */
+
+        $("asignaciones").innerHTML =
+            d.asignaciones.length
+
+            ?
+
+            d.asignaciones.map(a => `
+
+                <li>
+
+                    👷
+                    ${escapeHtml(a.conductor)}
+
+                    →
+
+                    🚛
+                    ${escapeHtml(a.unidad)}
+
+                </li>
+
+            `).join("")
+
+            :
+
+            "<li>No hay asignaciones activas</li>";
+
+
+        /* ALERTAS */
+
+        let alertas = "";
+
+
+        if(
+            d.stats.unidades_inhabilitadas > 0
+        ){
+
+            alertas += `
+
+                <div class="alerta alerta-roja">
+
+                    🚨
+
+                    ${d.stats.unidades_inhabilitadas}
+
+                    unidad(es) inhabilitada(s)
+
+                </div>
+
+            `;
+
+        }
+
+
+        if(
+            d.stats.unidades_disponibles === 0 &&
+            d.unidades.length > 0
+        ){
+
+            alertas += `
+
+                <div class="alerta alerta-amarilla">
+
+                    ⚠️ No hay unidades disponibles.
+
+                </div>
+
+            `;
+
+        }
+
+
+        if(!alertas){
+
+            alertas = `
+
+                <div class="alerta alerta-verde">
+
+                    ✅ Operación normal.
+
+                </div>
+
+            `;
+
+        }
+
+
+        $("alertas").innerHTML =
+            alertas;
+
+
+        /* SELECTS ADMIN */
+
+        actualizarSelect(
+            $("conductorSelect"),
+            d.conductores.filter(
+                c => c.estado === "disponible"
+            ),
+            "id",
+            "nombre"
+        );
+
+
+        actualizarSelect(
+            $("unidadSelect"),
+            d.unidades.filter(
+                u => u.estado === "disponible"
+            ),
+            "id",
+            "placa"
+        );
+
+
+        actualizarSelect(
+            $("conductorFinal"),
+            d.conductores.filter(
+                c => c.estado === "en_ruta"
+            ),
+            "id",
+            "nombre"
+        );
+
+
+        actualizarSelect(
+            $("unidadFinal"),
+            d.unidades.filter(
+                u => u.estado === "ocupada"
+            ),
+            "id",
+            "placa"
+        );
+
+
+        actualizarSelect(
+            $("editConductorSelect"),
+            d.conductores,
+            "id",
+            "nombre"
+        );
+
+
+        actualizarSelect(
+            $("editUnidadSelect"),
+            d.unidades,
+            "id",
+            "placa"
+        );
+
+
+        actualizarSelect(
+            $("unidadEstado"),
+            d.unidades.filter(
+                u => u.estado !== "ocupada"
+            ),
+            "id",
+            "placa"
+        );
+
+
+        /* SELECTS OPERADOR */
+
+        actualizarSelect(
+            $("solicitudConductor"),
+            d.conductores.filter(
+                c => c.estado === "disponible"
+            ),
+            "id",
+            "nombre"
+        );
+
+
+        actualizarSelect(
+            $("solicitudUnidad"),
+            d.unidades.filter(
+                u => u.estado === "disponible"
+            ),
+            "id",
+            "placa"
+        );
+
+
+    }catch(error){
+
+        console.error(error);
+
+    }
+
 }
 
-// filtros
-function filtrarHistorial(){
-let fecha=filtroFecha.value;
-let usuario=filtroUsuario.value.toLowerCase();
 
-fetch("/movimientos").then(r=>r.json()).then(d=>{
-let f=d.filter(m=>
-(!fecha||m.fecha.includes(fecha)) &&
-(!usuario||m.usuario.toLowerCase().includes(usuario))
-);
+/* ==========================================================
+   ESCAPAR HTML
+========================================================== */
 
-movimientos.innerHTML=f.map(m=>`
-<li>
-<b>${m.accion}</b><br>
-👤 ${m.usuario}<br>
-🕒 ${m.fecha}
-${m.obs?`<br>📝 ${m.obs}`:""}
-</li>`).join("");
-});
+function escapeHtml(text){
+
+    const div =
+        document.createElement("div");
+
+    div.textContent =
+        text ?? "";
+
+    return div.innerHTML;
+
 }
+
+
+/* ==========================================================
+   CREAR
+========================================================== */
+
+async function crearConductor(){
+
+    const nombre =
+        $("nombre").value.trim();
+
+
+    if(!nombre){
+
+        alert(
+            "Ingrese el nombre del conductor"
+        );
+
+        return;
+
+    }
+
+
+    await api(
+        "/crear_conductor",
+        {
+            nombre: nombre
+        }
+    );
+
+
+    limpiarTodo();
+
+    await cargar();
+
+}
+
+
+async function crearUnidad(){
+
+    const placa =
+        $("placa").value.trim();
+
+
+    if(!placa){
+
+        alert(
+            "Ingrese la placa"
+        );
+
+        return;
+
+    }
+
+
+    await api(
+        "/crear_unidad",
+        {
+            placa: placa
+        }
+    );
+
+
+    limpiarTodo();
+
+    await cargar();
+
+}
+
+
+/* ==========================================================
+   EDITAR CONDUCTOR
+========================================================== */
+
+function cargarConductorEditar(){
+
+    const select =
+        $("editConductorSelect");
+
+
+    const option =
+        select.options[
+            select.selectedIndex
+        ];
+
+
+    if(!option || !option.value){
+
+        alert(
+            "Seleccione un conductor"
+        );
+
+        return;
+
+    }
+
+
+    $("editConductorNombre").value =
+        option.textContent;
+
+}
+
+
+async function editarConductor(){
+
+    const id =
+        $("editConductorSelect").value;
+
+
+    const nombre =
+        $("editConductorNombre").value.trim();
+
+
+    if(!id || !nombre){
+
+        alert(
+            "Seleccione conductor e ingrese nombre"
+        );
+
+        return;
+
+    }
+
+
+    await api(
+        "/editar_conductor",
+        {
+            id:id,
+            nombre:nombre
+        }
+    );
+
+
+    await cargar();
+
+}
+
+
+async function eliminarConductor(){
+
+    const id =
+        $("editConductorSelect").value;
+
+
+    if(!id){
+
+        alert(
+            "Seleccione un conductor"
+        );
+
+        return;
+
+    }
+
+
+    if(
+        !confirm(
+            "¿Eliminar este conductor?"
+        )
+    ){
+
+        return;
+
+    }
+
+
+    await api(
+        "/eliminar_conductor",
+        {
+            id:id
+        }
+    );
+
+
+    await cargar();
+
+}
+
+
+/* ==========================================================
+   EDITAR UNIDAD
+========================================================== */
+
+function cargarUnidadEditar(){
+
+    const select =
+        $("editUnidadSelect");
+
+
+    const option =
+        select.options[
+            select.selectedIndex
+        ];
+
+
+    if(!option || !option.value){
+
+        alert(
+            "Seleccione una unidad"
+        );
+
+        return;
+
+    }
+
+
+    $("editUnidadPlaca").value =
+        option.textContent;
+
+}
+
+
+async function editarUnidad(){
+
+    const id =
+        $("editUnidadSelect").value;
+
+
+    const placa =
+        $("editUnidadPlaca").value.trim();
+
+
+    if(!id || !placa){
+
+        alert(
+            "Seleccione unidad e ingrese placa"
+        );
+
+        return;
+
+    }
+
+
+    await api(
+        "/editar_unidad",
+        {
+            id:id,
+            placa:placa
+        }
+    );
+
+
+    await cargar();
+
+}
+
+
+async function eliminarUnidad(){
+
+    const id =
+        $("editUnidadSelect").value;
+
+
+    if(!id){
+
+        alert(
+            "Seleccione una unidad"
+        );
+
+        return;
+
+    }
+
+
+    if(
+        !confirm(
+            "¿Eliminar esta unidad?"
+        )
+    ){
+
+        return;
+
+    }
+
+
+    await api(
+        "/eliminar_unidad",
+        {
+            id:id
+        }
+    );
+
+
+    await cargar();
+
+}
+
+
+/* ==========================================================
+   ASIGNACIÓN DIRECTA
+   SOLO ADMIN / SUPERVISOR
+========================================================== */
+
+async function asignar(){
+
+    const conductor_id =
+        $("conductorSelect").value;
+
+
+    const unidad_id =
+        $("unidadSelect").value;
+
+
+    if(!conductor_id || !unidad_id){
+
+        alert(
+            "Seleccione conductor y unidad"
+        );
+
+        return;
+
+    }
+
+
+    await api(
+        "/asignar",
+        {
+            conductor_id:
+                conductor_id,
+
+            unidad_id:
+                unidad_id
+        }
+    );
+
+
+    await cargar();
+
+}
+
+
+/* ==========================================================
+   FINALIZAR
+========================================================== */
+
+async function finalizar(){
+
+    const conductor_id =
+        $("conductorFinal").value;
+
+
+    const unidad_id =
+        $("unidadFinal").value;
+
+
+    if(!conductor_id && !unidad_id){
+
+        alert(
+            "Seleccione conductor o unidad"
+        );
+
+        return;
+
+    }
+
+
+    await api(
+        "/finalizar",
+        {
+            conductor_id:
+                conductor_id,
+
+            unidad_id:
+                unidad_id
+        }
+    );
+
+
+    await cargar();
+
+}
+
+
+/* ==========================================================
+   CAMBIAR ESTADO UNIDAD
+========================================================== */
+
+async function cambiarEstadoUnidad(){
+
+    const unidad_id =
+        $("unidadEstado").value;
+
+
+    const estado =
+        $("estadoUnidad").value;
+
+
+    const observacion =
+        $("obsUnidad").value.trim();
+
+
+    if(!unidad_id){
+
+        alert(
+            "Seleccione una unidad"
+        );
+
+        return;
+
+    }
+
+
+    await api(
+        "/cambiar_estado_unidad",
+        {
+            unidad_id:
+                unidad_id,
+
+            estado:
+                estado,
+
+            observacion:
+                observacion
+        }
+    );
+
+
+    $("obsUnidad").value = "";
+
+    await cargar();
+
+}
+
+
+/* ==========================================================
+   SOLICITUD OPERADOR
+========================================================== */
+
+async function solicitarAsignacion(){
+
+    const conductor_id =
+        $("solicitudConductor").value;
+
+
+    const unidad_id =
+        $("solicitudUnidad").value;
+
+
+    const observacion =
+        $("solicitudObservacion").value.trim();
+
+
+    if(!conductor_id || !unidad_id){
+
+        alert(
+            "Seleccione conductor y unidad"
+        );
+
+        return;
+
+    }
+
+
+    await api(
+        "/solicitar_asignacion",
+        {
+            conductor_id:
+                conductor_id,
+
+            unidad_id:
+                unidad_id,
+
+            observacion:
+                observacion
+        }
+    );
+
+
+    $("solicitudObservacion").value = "";
+
+
+    alert(
+        "Solicitud enviada correctamente"
+    );
+
+
+    await cargarSolicitudes();
+
+}
+
+
+/* ==========================================================
+   SOLICITUDES
+========================================================== */
+
+async function cargarSolicitudes(){
+
+    try{
+
+        const response =
+            await fetch(
+                "/solicitudes"
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if(!response.ok){
+
+            throw new Error(
+                data.error ||
+                "Error cargando solicitudes"
+            );
+
+        }
+
+
+        if(
+            userRol === "operador"
+        ){
+
+            renderMisSolicitudes(
+                data
+            );
+
+        }else{
+
+            renderSolicitudesAdmin(
+                data
+            );
+
+        }
+
+    }catch(error){
+
+        console.error(error);
+
+    }
+
+}
+
+
+/* ==========================================================
+   MIS SOLICITUDES
+========================================================== */
+
+function renderMisSolicitudes(data){
+
+    const contenedor =
+        $("misSolicitudes");
+
+
+    if(!data.length){
+
+        contenedor.innerHTML =
+            "<p>No tienes solicitudes.</p>";
+
+        return;
+
+    }
+
+
+    contenedor.innerHTML =
+        data.map(s => `
+
+            <div class="solicitud">
+
+                <b>
+                    👷 ${escapeHtml(s.conductor)}
+                </b>
+
+                →
+
+                <b>
+                    🚛 ${escapeHtml(s.unidad)}
+                </b>
+
+                <br><br>
+
+                Estado:
+
+                ${badgeEstado(s.estado)}
+
+                <br>
+
+                Fecha:
+
+                ${escapeHtml(s.fecha)}
+
+                ${
+                    s.observacion
+                    ?
+                    `<br>
+                     📝 ${escapeHtml(
+                         s.observacion
+                     )}`
+                    :
+                    ""
+                }
+
+                ${
+                    s.atendido_por
+                    ?
+                    `<br>
+                     👤 Atendido por:
+                     ${escapeHtml(
+                         s.atendido_por
+                     )}`
+                    :
+                    ""
+                }
+
+            </div>
+
+        `).join("");
+
+}
+
+
+/* ==========================================================
+   SOLICITUDES ADMIN / SUPERVISOR
+========================================================== */
+
+function renderSolicitudesAdmin(data){
+
+    const contenedor =
+        $("listaSolicitudesAdmin");
+
+
+    if(!data.length){
+
+        contenedor.innerHTML =
+            "<p>No hay solicitudes.</p>";
+
+        return;
+
+    }
+
+
+    contenedor.innerHTML =
+        data.map(s => `
+
+            <div class="solicitud">
+
+                <b>
+                    👷 ${escapeHtml(s.conductor)}
+                </b>
+
+                →
+
+                <b>
+                    🚛 ${escapeHtml(s.unidad)}
+                </b>
+
+                <br>
+
+                Solicita:
+
+                ${escapeHtml(s.usuario)}
+
+                <br>
+
+                Estado:
+
+                ${badgeEstado(s.estado)}
+
+                <br>
+
+                Fecha:
+
+                ${escapeHtml(s.fecha)}
+
+                ${
+                    s.observacion
+                    ?
+                    `<br>
+                     📝 ${escapeHtml(
+                         s.observacion
+                     )}`
+                    :
+                    ""
+                }
+
+                ${
+                    s.estado === "pendiente"
+
+                    ?
+
+                    `
+
+                    <br><br>
+
+                    <button
+                        class="btn-green"
+                        onclick="aprobarSolicitud(${s.id})">
+
+                        ✓ Aprobar
+
+                    </button>
+
+                    <button
+                        class="btn-red"
+                        onclick="rechazarSolicitud(${s.id})">
+
+                        ✕ Rechazar
+
+                    </button>
+
+                    `
+
+                    :
+
+                    (
+                        s.atendido_por
+
+                        ?
+
+                        `<br>
+                         👤 Atendido por:
+                         ${escapeHtml(
+                             s.atendido_por
+                         )}`
+
+                        :
+
+                        ""
+                    )
+                }
+
+            </div>
+
+        `).join("");
+
+}
+
+
+/* ==========================================================
+   BADGES
+========================================================== */
+
+function badgeEstado(estado){
+
+    let clase =
+        "badge-pendiente";
+
+
+    if(estado === "aprobada"){
+
+        clase =
+            "badge-aprobada";
+
+    }
+
+
+    if(estado === "rechazada"){
+
+        clase =
+            "badge-rechazada";
+
+    }
+
+
+    const texto = {
+
+        pendiente:"Pendiente",
+
+        aprobada:"Aprobada",
+
+        rechazada:"Rechazada"
+
+    }[estado] || estado;
+
+
+    return `
+        <span class="badge ${clase}">
+            ${texto}
+        </span>
+    `;
+
+}
+
+
+/* ==========================================================
+   APROBAR
+========================================================== */
+
+async function aprobarSolicitud(id){
+
+    if(
+        !confirm(
+            "¿Aprobar esta solicitud?"
+        )
+    ){
+
+        return;
+
+    }
+
+
+    await api(
+        "/aprobar_solicitud",
+        {
+            solicitud_id:id
+        }
+    );
+
+
+    await cargar();
+
+    await cargarSolicitudes();
+
+}
+
+
+/* ==========================================================
+   RECHAZAR
+========================================================== */
+
+async function rechazarSolicitud(id){
+
+    const observacion =
+        prompt(
+            "Motivo del rechazo:"
+        );
+
+
+    if(observacion === null){
+
+        return;
+
+    }
+
+
+    await api(
+        "/rechazar_solicitud",
+        {
+            solicitud_id:id,
+            observacion:
+                observacion
+        }
+    );
+
+
+    await cargarSolicitudes();
+
+}
+
+
+/* ==========================================================
+   HISTORIAL
+========================================================== */
+
+async function cargarHistorial(){
+
+    if(userRol !== "admin"){
+
+        return;
+
+    }
+
+
+    try{
+
+        const response =
+            await fetch(
+                "/movimientos"
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if(!response.ok){
+
+            throw new Error(
+                data.error ||
+                "Error"
+            );
+
+        }
+
+
+        renderHistorial(data);
+
+    }catch(error){
+
+        console.error(error);
+
+    }
+
+}
+
+
+function renderHistorial(data){
+
+    $("movimientos").innerHTML =
+        data.length
+
+        ?
+
+        data.map(m => `
+
+            <li>
+
+                <b>
+                    ${escapeHtml(
+                        m.accion
+                    )}
+                </b>
+
+                <br>
+
+                👤
+                ${escapeHtml(
+                    m.usuario
+                )}
+
+                <br>
+
+                🕒
+                ${escapeHtml(
+                    m.fecha
+                )}
+
+                ${
+                    m.obs
+
+                    ?
+
+                    `<br>
+                     📝
+                     ${escapeHtml(
+                         m.obs
+                     )}`
+
+                    :
+
+                    ""
+                }
+
+            </li>
+
+        `).join("")
+
+        :
+
+        "<li>No hay movimientos</li>";
+
+}
+
+
+/* ==========================================================
+   FILTRAR HISTORIAL
+========================================================== */
+
+async function filtrarHistorial(){
+
+    if(userRol !== "admin"){
+
+        return;
+
+    }
+
+
+    try{
+
+        const response =
+            await fetch(
+                "/movimientos"
+            );
+
+
+        const data =
+            await response.json();
+
+
+        const fecha =
+            $("filtroFecha").value;
+
+
+        const usuario =
+            $("filtroUsuario")
+                .value
+                .toLowerCase()
+                .trim();
+
+
+        const filtrado =
+            data.filter(m =>
+
+                (!fecha ||
+                    m.fecha.includes(
+                        fecha
+                    )
+                )
+
+                &&
+
+                (!usuario ||
+                    m.usuario
+                        .toLowerCase()
+                        .includes(
+                            usuario
+                        )
+                )
+
+            );
+
+
+        renderHistorial(
+            filtrado
+        );
+
+    }catch(error){
+
+        console.error(error);
+
+    }
+
+}
+
+
+/* ==========================================================
+   EXCEL
+========================================================== */
 
 function exportarExcel(){
-window.location.href="/exportar_excel";
+
+    if(userRol !== "admin"){
+
+        return;
+
+    }
+
+
+    window.location.href =
+        "/exportar_excel";
+
 }
 
-// roles
-if(userRol==="user"){
-document.getElementById("seccion-crear").style.display="none";
-document.getElementById("seccion-editar").style.display="none";
-document.getElementById("seccion-operaciones").style.display="none";
-document.getElementById("bloque-inhabilitar").style.display="none";
-}
-if(userRol!=="admin"){
-document.getElementById("seccion-usuarios").style.display="none";
-document.getElementById("seccion-historial").style.display="none";
+
+/* ==========================================================
+   USUARIOS
+========================================================== */
+
+function editarUsuario(
+    id,
+    username,
+    rol
+){
+
+    $("u_id").value =
+        id;
+
+    $("u_user").value =
+        username;
+
+    $("u_rol").value =
+        rol;
+
+    $("u_pass").value = "";
+
 }
 
-// init
-setInterval(cargar,3000);
-cargar();
+
+function cancelarEdicion(){
+
+    $("u_id").value = "";
+
+    $("u_user").value = "";
+
+    $("u_pass").value = "";
+
+    $("u_rol").value =
+        "operador";
+
+}
+
+
+async function cargarUsuarios(){
+
+    if(userRol !== "admin"){
+
+        return;
+
+    }
+
+
+    try{
+
+        const response =
+            await fetch(
+                "/usuarios"
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if(!response.ok){
+
+            throw new Error(
+                data.error ||
+                "Error"
+            );
+
+        }
+
+
+        $("listaUsuarios").innerHTML =
+            data.map(u => `
+
+                <li>
+
+                    <b>
+                        ${escapeHtml(
+                            u.username
+                        )}
+                    </b>
+
+                    (${escapeHtml(
+                        u.rol
+                    )})
+
+                    <button
+                        class="btn-blue"
+                        onclick="editarUsuario(
+                            ${u.id},
+                            '${escapeJs(u.username)}',
+                            '${escapeJs(u.rol)}'
+                        )">
+
+                        Seleccionar
+
+                    </button>
+
+                </li>
+
+            `).join("");
+
+    }catch(error){
+
+        console.error(error);
+
+    }
+
+}
+
+
+async function crearUsuario(){
+
+    const username =
+        $("u_user")
+            .value
+            .trim();
+
+
+    const password =
+        $("u_pass")
+            .value;
+
+
+    const rol =
+        $("u_rol")
+            .value;
+
+
+    if(!username || !password){
+
+        alert(
+            "Usuario y contraseña son obligatorios"
+        );
+
+        return;
+
+    }
+
+
+    await api(
+        "/crear_usuario",
+        {
+            username:
+                username,
+
+            password:
+                password,
+
+            rol:
+                rol
+        }
+    );
+
+
+    cancelarEdicion();
+
+    await cargarUsuarios();
+
+}
+
+
+async function editarUsuarioGuardar(){
+
+    const id =
+        $("u_id").value;
+
+
+    const username =
+        $("u_user")
+            .value
+            .trim();
+
+
+    const password =
+        $("u_pass")
+            .value;
+
+
+    const rol =
+        $("u_rol")
+            .value;
+
+
+    if(!id || !username){
+
+        alert(
+            "Seleccione un usuario"
+        );
+
+        return;
+
+    }
+
+
+    await api(
+        "/editar_usuario",
+        {
+            id:id,
+            username:username,
+            password:password,
+            rol:rol
+        }
+    );
+
+
+    cancelarEdicion();
+
+    await cargarUsuarios();
+
+}
+
+
+async function eliminarUsuarioSeleccion(){
+
+    const id =
+        $("u_id").value;
+
+
+    if(!id){
+
+        alert(
+            "Seleccione un usuario"
+        );
+
+        return;
+
+    }
+
+
+    if(
+        !confirm(
+            "¿Eliminar este usuario?"
+        )
+    ){
+
+        return;
+
+    }
+
+
+    await api(
+        "/eliminar_usuario",
+        {
+            id:id
+        }
+    );
+
+
+    cancelarEdicion();
+
+    await cargarUsuarios();
+
+}
+
+
+function escapeJs(text){
+
+    return String(text)
+        .replace(/\\/g,"\\\\")
+        .replace(/'/g,"\\'");
+
+}
+
+
+/* ==========================================================
+   PERMISOS DE INTERFAZ
+========================================================== */
+
+function aplicarPermisos(){
+
+    /*
+     * Ocultamos absolutamente todo
+     * y luego mostramos según rol.
+     */
+
+    $("seccion-solicitud")
+        .style.display = "none";
+
+    $("seccion-mis-solicitudes")
+        .style.display = "none";
+
+    $("seccion-crear")
+        .style.display = "none";
+
+    $("seccion-editar")
+        .style.display = "none";
+
+    $("seccion-operaciones")
+        .style.display = "none";
+
+    $("seccion-solicitudes-admin")
+        .style.display = "none";
+
+    $("bloque-inhabilitar")
+        .style.display = "none";
+
+    $("seccion-historial")
+        .style.display = "none";
+
+    $("seccion-usuarios")
+        .style.display = "none";
+
+
+    /* -----------------------------------------
+       OPERADOR
+    ----------------------------------------- */
+
+    if(userRol === "operador"){
+
+        $("seccion-solicitud")
+            .style.display = "block";
+
+        $("seccion-mis-solicitudes")
+            .style.display = "block";
+
+    }
+
+
+    /* -----------------------------------------
+       SUPERVISOR
+    ----------------------------------------- */
+
+    if(userRol === "supervisor"){
+
+        $("seccion-crear")
+            .style.display = "grid";
+
+        $("seccion-editar")
+            .style.display = "grid";
+
+        $("seccion-operaciones")
+            .style.display = "grid";
+
+        $("seccion-solicitudes-admin")
+            .style.display = "grid";
+
+        $("bloque-inhabilitar")
+            .style.display = "grid";
+
+    }
+
+
+    /* -----------------------------------------
+       ADMIN
+    ----------------------------------------- */
+
+    if(userRol === "admin"){
+
+        $("seccion-crear")
+            .style.display = "grid";
+
+        $("seccion-editar")
+            .style.display = "grid";
+
+        $("seccion-operaciones")
+            .style.display = "grid";
+
+        $("seccion-solicitudes-admin")
+            .style.display = "grid";
+
+        $("bloque-inhabilitar")
+            .style.display = "grid";
+
+        $("seccion-historial")
+            .style.display = "grid";
+
+        $("seccion-usuarios")
+            .style.display = "grid";
+
+    }
+
+}
+
+
+/* ==========================================================
+   INICIALIZACIÓN
+========================================================== */
+
+async function inicializar(){
+
+    aplicarPermisos();
+
+    await cargar();
+
+    await cargarSolicitudes();
+
+    if(userRol === "admin"){
+
+        await cargarHistorial();
+
+        await cargarUsuarios();
+
+    }
+
+}
+
+
+inicializar();
+
+
+/*
+ * Actualizar dashboard periódicamente.
+ */
+
+setInterval(
+    cargar,
+    5000
+);
+
+
+/*
+ * Actualizar solicitudes.
+ */
+
+setInterval(
+    cargarSolicitudes,
+    5000
+);
+
+
+/*
+ * Actualizar historial y usuarios
+ * solamente para admin.
+ */
+
+if(userRol === "admin"){
+
+    setInterval(
+        cargarHistorial,
+        10000
+    );
+
+    setInterval(
+        cargarUsuarios,
+        10000
+    );
+
+}
 
 </script>
 
 </body>
+
 </html>
